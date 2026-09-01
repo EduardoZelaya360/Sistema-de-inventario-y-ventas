@@ -1,0 +1,29 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Sistema_de_inventario_y_ventas.Models
+{
+    [Table("inventario")]
+    public class Producto
+    {
+        [Key]
+        public int Id { get; set; }
+        
+        [Required]
+        [Column("producto")]
+        public string ProductoNombre { get; set; } = string.Empty;
+        
+        [Required]
+        [Column("nombre_categoria")]
+        public string NombreCategoria { get; set; } = string.Empty;
+        
+        public string? Descripcion { get; set; }
+        
+        [Required]
+        [Column("precio_unitario")]
+        public decimal PrecioUnitario { get; set; }
+        
+        [Required]
+        public int Unidades { get; set; }
+    }
+}

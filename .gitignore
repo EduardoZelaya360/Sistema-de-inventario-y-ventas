@@ -1,0 +1,20 @@
+# Visual Studio / .NET Core
+obj/
+bin/
+.vs/
+*.user
+*.suo
+.dotnet/
+
+# Configuraciones locales y secretos
+appsettings.Development.json
+.env
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración con secretos
+appsettings.json
+appsettings.*.json
+!appsettings.example.json

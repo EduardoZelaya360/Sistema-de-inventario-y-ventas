@@ -1,0 +1,32 @@
+﻿@model IEnumerable<Sistema_de_inventario_y_ventas.Models.Categoria>
+
+@{
+    ViewData["Title"] = "Página Principal";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Bienvenido a tu Sistema de Inventario y Ventas</h1>
+    <p>Conectado exitosamente a la base de datos en Neon 🚀</p>
+</div>
+
+<div class="container mt-4">
+    <h3>Categorías desde la Base de Datos:</h3>
+    
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre de la Categoría</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Id</td>
+                    <td>@item.NombreCategoria</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
