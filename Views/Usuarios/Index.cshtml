@@ -1,0 +1,51 @@
+@model IEnumerable<Sistema_de_inventario_y_ventas.Models.Usuario>
+
+@{
+    ViewData["Title"] = "Gestión de Usuarios";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people me-2"></i>Gestión de Usuarios</h2>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="bi bi-person-plus me-1"></i> Nuevo Usuario
+    </a>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 p-3 bg-white">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="fw-semibold">@item.Nombre</td>
+                        <td>@item.Email</td>
+                        <td>
+                            <span class="badge @(item.Rol == "Administrador" ? "bg-danger" : "bg-success")">
+                                @item.Rol
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning me-1" title="Editar">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar este usuario?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

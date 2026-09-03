@@ -1,50 +1,158 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
+
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Sistema_de_inventario_y_ventas</title>
-    <script type="importmap"></script>
+    <title>@ViewData["Title"] - Sistema de Inventario</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Sistema_de_inventario_y_ventas.styles.css" asp-append-version="true" />
 </head>
-<body>
+
+<body class="bg-light">
+    @{
+        var nombreUsuario = Context.Session.GetString("UsuarioNombre");
+        var rolUsuario = Context.Session.GetString("UsuarioRol");
+        bool esAdministrador = rolUsuario == "Administrador";
+        bool esVendedor = rolUsuario == "Vendedor";
+        bool estaLogueado = nombreUsuario != null;
+    }
+
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-dark border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Sistema_de_inventario_y_ventas</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+
+                <!-- Logo / Título -->
+                <a class="navbar-brand fw-bold me-4" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-shop me-1"></i> StockFlow
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+                        aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+
+                <!-- Bloque derecho: Perfil y sesión -->
+                <div class="collapse navbar-collapse justify-content-end" id="navbarContent">
+                    <ul class="navbar-nav">
+                        @if (estaLogueado)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-light d-flex align-items-center" href="#"
+                                   id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person-circle fs-5 me-1 text-success"></i>
+                                    <span class="fw-semibold">@nombreUsuario</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+                                    <li>
+                                        <span class="dropdown-item-text text-muted small">
+                                            <i class="bi bi-shield-lock me-1"></i> Rol: @rolUsuario
+                                        </span>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger fw-semibold" asp-controller="Auth" asp-action="Logout">
+                                            <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-light d-flex align-items-center" href="#"
+                                   id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person-circle fs-5 me-1"></i>
+                                    <span>Iniciar Sesión</span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Auth" asp-action="Login">
+                                            <i class="bi bi-box-arrow-in-right me-2"></i>Entrar
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
                     </ul>
                 </div>
+
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+    <!-- Contenedor Principal -->
+    <div class="container-fluid">
+        @if (estaLogueado)
+        {
+            <div class="row">
+                <!-- Sidebar Dinámico para Administrador o Vendedor -->
+                <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse rounded-4 p-3 mb-4 text-white" style="min-height: 80vh;">
+                    <div class="position-sticky">
+                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase fs-7">
+                            <span>Panel @rolUsuario</span>
+                        </h6>
+                        <ul class="nav flex-column nav-pills">
+                            <li class="nav-item mb-2">
+                                <a class="nav-link text-white d-flex align-items-center" asp-controller="Home" asp-action="Index">
+                                    <i class="bi bi-speedometer2 me-2"></i> Inicio
+                                </a>
+                            </li>
+
+                            @if (esAdministrador)
+                            {
+                                <li class="nav-item mb-2">
+                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Inventario" asp-action="Index">
+                                        <i class="bi bi-box-seam me-2"></i> Inventario
+                                    </a>
+                                </li>
+                                <li class="nav-item mb-2">
+                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Ventas" asp-action="Index">
+                                        <i class="bi bi-cart-check me-2"></i> Ventas
+                                    </a>
+                                </li>
+                                <li class="nav-item mb-2">
+                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Usuarios" asp-action="Index">
+                                        <i class="bi bi-people me-2"></i> Usuarios
+                                    </a>
+                                </li>
+                            }
+
+                            @if (esVendedor)
+                            {
+                                <li class="nav-item mb-2">
+                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Ventas" asp-action="Index">
+                                        <i class="bi bi-cart-check me-2"></i> Ventas
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </nav>
+
+                <!-- Contenido con Sidebar -->
+                <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                    @RenderBody()
+                </main>
+            </div>
+        }
+        else
+        {
+            <!-- Contenido cuando no ha iniciado sesión (pantalla de login o bienvenida pública) -->
+            <div class="container">
+                <main role="main" class="pb-3">
+                    @RenderBody()
+                </main>
+            </div>
+        }
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Sistema_de_inventario_y_ventas - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
+
 </html>

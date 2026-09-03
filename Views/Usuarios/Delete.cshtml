@@ -1,0 +1,41 @@
+@model Sistema_de_inventario_y_ventas.Models.Usuario
+
+@{
+    ViewData["Title"] = "Eliminar Usuario";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0 rounded-4 p-4 bg-white border-danger">
+            <h3 class="fw-bold text-danger mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Eliminar Usuario</h3>
+            <p class="text-muted">¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.</p>
+
+            <dl class="row mt-3">
+                <dt class="col-sm-4 fw-semibold">Nombre:</dt>
+                <dd class="col-sm-8">@Model.Nombre</dd>
+
+                <dt class="col-sm-4 fw-semibold">Correo:</dt>
+                <dd class="col-sm-8">@Model.Email</dd>
+
+                <dt class="col-sm-4 fw-semibold">Rol:</dt>
+                <dd class="col-sm-8">
+                    <span class="badge @(Model.Rol == "Admin" ? "bg-danger" : "bg-success")">
+                        @Model.Rol
+                    </span>
+                </dd>
+            </dl>
+
+            <form asp-action="Delete" class="mt-4">
+                <input type="hidden" asp-for="Id" />
+                <div class="d-flex justify-content-between">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i> Sí, Eliminar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

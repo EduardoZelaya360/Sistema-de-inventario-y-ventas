@@ -1,0 +1,42 @@
+@model List<Sistema_de_inventario_y_ventas.Models.Producto>
+
+@{
+    ViewData["Title"] = "Inventario";
+}
+
+<h1>Inventario</h1>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success">@TempData["Mensaje"]</div>
+}
+
+<a asp-action="Create" class="btn btn-primary mb-3">Agregar producto</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Precio unitario</th>
+            <th>Unidades</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            <tr class="@(p.Unidades <= 5 ? "table-danger" : "")">
+                <td>@p.ProductoNombre</td>
+                <td>@p.NombreCategoria</td>
+                <td>@p.PrecioUnitario.ToString("C")</td>
+                <td>@p.Unidades</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">Ver</a>
+                    <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+                    <a asp-action="Delete" asp-route-id="@p.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

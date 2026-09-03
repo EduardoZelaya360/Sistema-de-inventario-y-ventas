@@ -1,0 +1,23 @@
+@model Sistema_de_inventario_y_ventas.Models.Producto
+@{
+    ViewData["Title"] = "Eliminar producto";
+}
+
+<h1>¿Eliminar este producto?</h1>
+
+<dl class="row">
+    <dt class="col-sm-2">Producto</dt>
+    <dd class="col-sm-10">@Model.ProductoNombre</dd>
+
+    <dt class="col-sm-2">Categoría</dt>
+    <dd class="col-sm-10">@Model.NombreCategoria</dd>
+
+    <dt class="col-sm-2">Unidades</dt>
+    <dd class="col-sm-10">@Model.Unidades</dd>
+</dl>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>

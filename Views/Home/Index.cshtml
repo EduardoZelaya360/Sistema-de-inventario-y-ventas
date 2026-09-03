@@ -1,32 +1,205 @@
-﻿@model IEnumerable<Sistema_de_inventario_y_ventas.Models.Categoria>
-
+﻿@model Sistema_de_inventario_y_ventas.Models.DashboardViewModel
 @{
-    ViewData["Title"] = "Página Principal";
+    ViewData["Title"] = "Inicio";
+    var nombreUsuario = Context.Session.GetString("UsuarioNombre");
+    var cambioPositivo = Model.PorcentajeCambioSemanal >= 0;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Bienvenido a tu Sistema de Inventario y Ventas</h1>
-    <p>Conectado exitosamente a la base de datos en Neon 🚀</p>
+<div class="p-5 mb-4 bg-white rounded-4 shadow-sm border">
+    <div class="container-fluid py-3">
+        <h1 class="display-5 fw-bold text-dark">
+            Bienvenido a StockFlow@(nombreUsuario != null ? ", " + nombreUsuario : "")!
+        </h1>
+        <p class="col-md-8 fs-5 text-muted mt-2">
+            Sistema minimalista de gestión de inventario y ventas.
+        </p>
+    </div>
 </div>
 
-<div class="container mt-4">
-    <h3>Categorías desde la Base de Datos:</h3>
-    
-    <table class="table table-striped mt-3">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre de la Categoría</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-            {
-                <tr>
-                    <td>@item.Id</td>
-                    <td>@item.NombreCategoria</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-2 col-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted small">Productos</h6>
+                <p class="h3 fw-bold mb-0">@Model.TotalProductos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted small">Categorías</h6>
+                <p class="h3 fw-bold mb-0">@Model.TotalCategorias</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted small">Ventas hoy</h6>
+                <p class="h3 fw-bold mb-0">@Model.VentasHoy</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted small">Ingresos hoy</h6>
+                <p class="h3 fw-bold mb-0">@Model.IngresosHoy.ToString("C")</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
+                <h6 class="text-muted small">Ticket promedio</h6>
+                <p class="h3 fw-bold mb-0">@Model.TicketPromedio.ToString("C")</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card shadow-sm border-0 h-100 @(cambioPositivo ? "border-success" : "border-danger") border-2">
+            <div class="card-body">
+                <h6 class="text-muted small">Vs. semana pasada</h6>
+                <p class="h3 fw-bold mb-0 @(cambioPositivo ? "text-success" : "text-danger")">
+                    @(cambioPositivo ? "▲" : "▼") @Math.Abs(Model.PorcentajeCambioSemanal)%
+                </p>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Fila 1 de gráficos -->
+<div class="row g-3 mb-3">
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Ingresos — últimos 7 días</strong></div>
+            <div class="card-body"><canvas id="chartIngresos" height="110"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Productos más vendidos</strong></div>
+            <div class="card-body"><canvas id="chartTopProductos" height="110"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Fila 2 de gráficos -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Ventas por categoría</strong></div>
+            <div class="card-body"><canvas id="chartVentasCategoria" height="180"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Capital invertido por categoría</strong></div>
+            <div class="card-body"><canvas id="chartValorInventario" height="180"></canvas></div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white text-danger"><strong>Stock crítico</strong></div>
+            <div class="card-body"><canvas id="chartStockCritico" height="180"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<!-- Tablas -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Alertas de stock bajo</strong></div>
+            <div class="card-body p-0">
+                @if (!Model.ProductosStockBajo.Any())
+                {
+                    <p class="text-muted p-3 mb-0">No hay productos con stock bajo.</p>
+                }
+                else
+                {
+                    <table class="table mb-0">
+                        <thead><tr><th>Producto</th><th>Unidades</th></tr></thead>
+                        <tbody>
+                            @foreach (var p in Model.ProductosStockBajo)
+                            {
+                                <tr class="table-danger"><td>@p.ProductoNombre</td><td>@p.Unidades</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Últimas ventas</strong></div>
+            <div class="card-body p-0">
+                @if (!Model.UltimasVentas.Any())
+                {
+                    <p class="text-muted p-3 mb-0">Aún no hay ventas registradas.</p>
+                }
+                else
+                {
+                    <table class="table mb-0">
+                        <thead><tr><th>Producto</th><th>Unidades</th><th>Total</th></tr></thead>
+                        <tbody>
+                            @foreach (var v in Model.UltimasVentas)
+                            {
+                                <tr><td>@v.Producto</td><td>@v.Unidades</td><td>@v.TotalAPagar.ToString("C")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        const diasLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DiasLabels));
+        const ingresosPorDia = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.IngresosPorDia));
+        const productosTopLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductosTopLabels));
+        const productosTopUnidades = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductosTopUnidades));
+        const ventasCategoriaLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.VentasCategoriaLabels));
+        const ventasCategoriaMontos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.VentasCategoriaMontos));
+        const valorInventarioLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ValorInventarioLabels));
+        const valorInventarioMontos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ValorInventarioMontos));
+        const stockCriticoLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockCriticoLabels));
+        const stockCriticoUnidades = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockCriticoUnidades));
+
+        new Chart(document.getElementById('chartIngresos'), {
+            type: 'line',
+            data: { labels: diasLabels, datasets: [{ label: 'Ingresos', data: ingresosPorDia, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.3, fill: true }] },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        new Chart(document.getElementById('chartTopProductos'), {
+            type: 'bar',
+            data: { labels: productosTopLabels, datasets: [{ label: 'Unidades vendidas', data: productosTopUnidades, backgroundColor: '#198754' }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+        });
+
+        new Chart(document.getElementById('chartVentasCategoria'), {
+            type: 'doughnut',
+            data: { labels: ventasCategoriaLabels, datasets: [{ data: ventasCategoriaMontos, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6f42c1','#20c997'] }] },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('chartValorInventario'), {
+            type: 'bar',
+            data: { labels: valorInventarioLabels, datasets: [{ label: 'Valor invertido', data: valorInventarioMontos, backgroundColor: '#6f42c1' }] },
+            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+
+        new Chart(document.getElementById('chartStockCritico'), {
+            type: 'bar',
+            data: { labels: stockCriticoLabels, datasets: [{ label: 'Unidades restantes', data: stockCriticoUnidades, backgroundColor: '#dc3545' }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+        });
+    </script>
+}

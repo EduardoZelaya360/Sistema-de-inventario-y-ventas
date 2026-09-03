@@ -1,9 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Sistema_de_inventario_y_ventas.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Configurar sesiones
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("CadenaConexionNeon")));
@@ -21,6 +30,9 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+// Activar sesión (debe ir antes de UseAuthorization y MapControllerRoute)
+app.UseSession();
 
 app.UseAuthorization();
 

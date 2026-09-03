@@ -13,5 +13,7 @@ namespace Sistema_de_inventario_y_ventas.Models
         [Required]
         [Column("nombre_categoria")]
         public string NombreCategoria { get; set; } = string.Empty;
+
+        public List<Producto> Productos { get; set; } = new();
     }
 }

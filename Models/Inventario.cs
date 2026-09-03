@@ -7,6 +7,7 @@ namespace Sistema_de_inventario_y_ventas.Models
     public class Producto
     {
         [Key]
+        [Column("id")]
         public int Id { get; set; }
         
         [Required]
@@ -17,6 +18,7 @@ namespace Sistema_de_inventario_y_ventas.Models
         [Column("nombre_categoria")]
         public string NombreCategoria { get; set; } = string.Empty;
         
+        [Column("descripcion")]
         public string? Descripcion { get; set; }
         
         [Required]
@@ -24,6 +26,10 @@ namespace Sistema_de_inventario_y_ventas.Models
         public decimal PrecioUnitario { get; set; }
         
         [Required]
+        [Column("unidades")]
         public int Unidades { get; set; }
+
+        [ForeignKey(nameof(NombreCategoria))]
+        public Categoria? Categoria { get; set; }
     }
 }

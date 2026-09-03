@@ -1,0 +1,136 @@
+@model List<Sistema_de_inventario_y_ventas.Models.Venta>
+@{
+    ViewData["Title"] = "Gestión de Ventas";
+    var formModel = ViewBag.FormModel as Sistema_de_inventario_y_ventas.Models.VentaFormViewModel ?? new Sistema_de_inventario_y_ventas.Models.VentaFormViewModel();
+    var rolUsuario = ViewBag.RolUsuario as string ?? Context.Session.GetString("UsuarioRol");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-cart-check me-2"></i>Gestión de Ventas</h2>
+</div>
+
+@if (TempData["Mensaje"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Mensaje"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <p class="mb-0">@error.ErrorMessage</p>
+        }
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Pestañas de navegación interna -->
+<ul class="nav nav-tabs mb-4" id="ventasTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-semibold" id="registrar-tab" data-bs-toggle="tab" data-bs-target="#registrar-pane" type="button" role="tab">
+            <i class="bi bi-plus-circle me-1"></i> Registrar Nueva Venta
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial-pane" type="button" role="tab">
+            <i class="bi bi-clock-history me-1"></i> Historial de Ventas
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="ventasTabContent">
+    
+    <!-- PESTAÑA 1: REGISTRAR NUEVA VENTA -->
+    <div class="tab-pane fade show active" id="registrar-pane" role="tabpanel">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow-sm border-0 rounded-4 p-4 bg-white">
+                    <h4 class="fw-bold mb-3 text-dark">Nueva Transacción</h4>
+                    
+                    <form asp-action="Create" method="post">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Producto</label>
+                            <select name="ProductoId" class="form-select" required>
+                                <option value="">-- Selecciona un producto --</option>
+                                @foreach (var p in (List<Sistema_de_inventario_y_ventas.Models.Producto>)ViewBag.Productos)
+                                {
+                                    <option value="@p.Id">@p.ProductoNombre (@p.Unidades disponibles - @p.PrecioUnitario.ToString("C") c/u)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Cantidad</label>
+                            <input name="Unidades" class="form-control" type="number" min="1" value="@formModel.Unidades" required />
+                        </div>
+
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-success px-4">
+                                <i class="bi bi-check-lg me-1"></i> Registrar Venta
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: HISTORIAL DE VENTAS (SOLO LECTURA) -->
+    <div class="tab-pane fade" id="historial-pane" role="tabpanel">
+        <div class="card shadow-sm border-0 rounded-4 p-3 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                <h5 class="fw-bold m-0 text-dark">
+                    @(rolUsuario == "Administrador" ? "Historial Global (Todas las Ventas)" : "Mi Historial de Ventas")
+                </h5>
+                <span class="text-muted small">Registros: @Model.Count()</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Unidades</th>
+                            <th>Precio Unitario</th>
+                            <th>Total</th>
+                            <th>Vendedor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">No hay registros de ventas disponibles.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var v in Model)
+                            {
+                                <tr>
+                                    <td>@v.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                    <td class="fw-semibold">@v.Producto</td>
+                                    <td>@v.Unidades</td>
+                                    <td>@v.PrecioUnitario.ToString("C")</td>
+                                    <td class="fw-bold text-success">@v.TotalAPagar.ToString("C")</td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            <i class="bi bi-person me-1"></i> @v.Vendedor
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>

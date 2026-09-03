@@ -1,0 +1,48 @@
+@model Sistema_de_inventario_y_ventas.Models.VentaFormViewModel
+@{
+    ViewData["Title"] = "Registrar venta";
+}
+
+<h1>Registrar venta</h1>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <p class="mb-0">@error.ErrorMessage</p>
+        }
+    </div>
+}
+
+<form asp-action="Create" method="post">
+    <div class="mb-3">
+        <label class="form-label">Producto</label>
+        <select asp-for="ProductoId" class="form-select">
+            <option value="">-- Selecciona --</option>
+            @foreach (var p in (List<Sistema_de_inventario_y_ventas.Models.Producto>)ViewBag.Productos)
+            {
+                <option value="@p.Id">@p.ProductoNombre (@p.Unidades disponibles - @p.PrecioUnitario.ToString("C") c/u)</option>
+            }
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Cantidad</label>
+        <input asp-for="Unidades" class="form-control" type="number" min="1" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Vendedor</label>
+        <select asp-for="Vendedor" class="form-select">
+            <option value="">-- Selecciona --</option>
+            @foreach (var u in (List<Sistema_de_inventario_y_ventas.Models.Usuario>)ViewBag.Usuarios)
+            {
+                <option value="@u.Nombre">@u.Nombre</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Registrar venta</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>
