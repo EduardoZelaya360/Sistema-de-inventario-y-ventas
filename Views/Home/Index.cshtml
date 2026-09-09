@@ -11,7 +11,7 @@
             Bienvenido a StockFlow@(nombreUsuario != null ? ", " + nombreUsuario : "")!
         </h1>
         <p class="col-md-8 fs-5 text-muted mt-2">
-            Sistema minimalista de gestión de inventario y ventas.
+            Sistema de inventario y ventas.
         </p>
     </div>
 </div>
@@ -134,28 +134,36 @@
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white"><strong>Últimas ventas</strong></div>
-            <div class="card-body p-0">
-                @if (!Model.UltimasVentas.Any())
-                {
-                    <p class="text-muted p-3 mb-0">Aún no hay ventas registradas.</p>
-                }
-                else
-                {
-                    <table class="table mb-0">
-                        <thead><tr><th>Producto</th><th>Unidades</th><th>Total</th></tr></thead>
-                        <tbody>
-                            @foreach (var v in Model.UltimasVentas)
-                            {
-                                <tr><td>@v.Producto</td><td>@v.Unidades</td><td>@v.TotalAPagar.ToString("C")</td></tr>
-                            }
-                        </tbody>
-                    </table>
-                }
-            </div>
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white"><strong>Últimas ventas</strong></div>
+        <div class="card-body p-0">
+            @if (!Model.UltimasVentas.Any())
+            {
+                <p class="text-muted p-3 mb-0">Aún no hay ventas registradas.</p>
+            }
+            else
+            {
+                <table class="table mb-0">
+                    <thead><tr><th>Productos</th><th>Total</th></tr></thead>
+                    <tbody>
+                        @foreach (var v in Model.UltimasVentas)
+                        {
+                            <tr>
+                                <td>
+                                    @foreach (var d in v.Detalles)
+                                    {
+                                        <div>@d.Producto <span class="text-muted">x@d.Unidades</span></div>
+                                    }
+                                </td>
+                                <td>@v.TotalAPagar.ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
         </div>
     </div>
+</div>
 </div>
 
 @section Scripts {

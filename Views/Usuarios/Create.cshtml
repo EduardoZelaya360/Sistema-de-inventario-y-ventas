@@ -25,7 +25,12 @@
 
                 <div class="mb-3">
                     <label asp-for="Contrasena" class="form-label fw-semibold">Contraseña</label>
-                    <input asp-for="Contrasena" type="password" class="form-control" placeholder="******" />
+                    <div class="input-group">
+                        <input asp-for="Contrasena" type="password" class="form-control" id="passwordInput" placeholder="******" />
+                        <button class="btn btn-outline-secondary px-3" type="button" id="btnTogglePassword" title="Mostrar/Ocultar contraseña">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
                     <span asp-validation-for="Contrasena" class="text-danger"></span>
                 </div>
 
@@ -51,3 +56,22 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('btnTogglePassword').addEventListener('click', function () {
+            const passwordInput = document.getElementById('passwordInput');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('bi-eye');
+                eyeIcon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('bi-eye-slash');
+                eyeIcon.classList.add('bi-eye');
+            }
+        });
+    </script>
+}

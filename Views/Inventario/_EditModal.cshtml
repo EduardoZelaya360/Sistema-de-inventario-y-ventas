@@ -1,0 +1,54 @@
+@model Sistema_de_inventario_y_ventas.Models.Producto
+
+<div class="modal-header py-2">
+    <h5 class="modal-title fs-6"><i class="bi bi-pencil-square me-2"></i>Editar producto</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    <!-- max-height y overflow-auto aseguran que haya scroll interno si es muy alto -->
+    <div class="modal-body py-2" style="max-height: 65vh; overflow-y: auto;">
+        <input type="hidden" asp-for="Id" />
+
+        <div class="mb-2">
+            <label class="form-label small mb-1">Producto</label>
+            <input asp-for="ProductoNombre" class="form-control form-control-sm" />
+            <span asp-validation-for="ProductoNombre" class="text-danger small"></span>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small mb-1">Categoría</label>
+            <select asp-for="NombreCategoria" class="form-select form-select-sm">
+                @foreach (var c in (List<Sistema_de_inventario_y_ventas.Models.Categoria>)ViewBag.Categorias)
+                {
+                    <option value="@c.NombreCategoria" selected="@(c.NombreCategoria == Model.NombreCategoria)">
+                        @c.NombreCategoria
+                    </option>
+                }
+            </select>
+            <span asp-validation-for="NombreCategoria" class="text-danger small"></span>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small mb-1">Descripción</label>
+            <textarea asp-for="Descripcion" class="form-control form-control-sm" rows="2"></textarea>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small mb-1">Precio unitario</label>
+            <input asp-for="PrecioUnitario" class="form-control form-control-sm" type="number" step="0.01" />
+            <span asp-validation-for="PrecioUnitario" class="text-danger small"></span>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label small mb-1">Unidades</label>
+            <input asp-for="Unidades" class="form-control form-control-sm" type="number" />
+            <span asp-validation-for="Unidades" class="text-danger small"></span>
+        </div>
+    </div>
+
+    <div class="modal-footer py-2">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-sm btn-primary">Guardar cambios</button>
+    </div>
+</form>

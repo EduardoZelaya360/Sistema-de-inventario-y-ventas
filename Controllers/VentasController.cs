@@ -14,7 +14,7 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             _context = context;
         }
 
-        // GET: /Ventas (Vista unificada: Registro + Historial)
+        // GET: /Ventas
         public async Task<IActionResult> Index()
         {
             var rol = HttpContext.Session.GetString("UsuarioRol");
@@ -25,8 +25,7 @@ namespace Sistema_de_inventario_y_ventas.Controllers
                 return RedirectToAction("Login", "Auth");
             }
 
-            // Filtrar historial según el rol de manera segura
-            var query = _context.Ventas.AsQueryable();
+            var query = _context.Ventas.Include(v => v.Detalles).AsQueryable();
             if (rol.Equals("Vendedor", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(nombreUsuario))
             {
                 query = query.Where(v => v.Vendedor == nombreUsuario);
@@ -35,18 +34,15 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             var ventas = await query.OrderByDescending(v => v.Fecha).ToListAsync();
 
             await CargarProductosYUsuarios();
-
-            // Pasamos el modelo del formulario inicializado
-            ViewBag.FormModel = new VentaFormViewModel { Unidades = 1 };
             ViewBag.RolUsuario = rol;
 
             return View(ventas);
         }
 
-        // POST: /Ventas/Create (Procesa el formulario de la vista unificada)
+        // POST: /Ventas/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(VentaFormViewModel model)
+        public async Task<IActionResult> Create([FromForm] string vendedor, [FromForm] string itemsJson)
         {
             var rol = HttpContext.Session.GetString("UsuarioRol");
             var nombreUsuario = HttpContext.Session.GetString("UsuarioNombre");
@@ -56,62 +52,90 @@ namespace Sistema_de_inventario_y_ventas.Controllers
                 return RedirectToAction("Login", "Auth");
             }
 
-            // Si es vendedor, forzamos que el vendedor sea él mismo por seguridad
             if (rol.Equals("Vendedor", StringComparison.OrdinalIgnoreCase))
             {
-                model.Vendedor = nombreUsuario ?? string.Empty;
-                ModelState.Remove(nameof(model.Vendedor));
-            }
-            else if (rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(model.Vendedor))
-            {
-                ModelState.AddModelError("Vendedor", "Debe seleccionar un vendedor.");
+                vendedor = nombreUsuario ?? string.Empty;
             }
 
-            var producto = await _context.Inventario.FindAsync(model.ProductoId);
-
-            if (producto == null)
+            List<ItemCarrito> items;
+            try
             {
-                ModelState.AddModelError("", "El producto seleccionado no existe.");
+                items = System.Text.Json.JsonSerializer.Deserialize<List<ItemCarrito>>(itemsJson) ?? new();
             }
-            else if (model.Unidades > producto.Unidades)
+            catch
             {
-                ModelState.AddModelError("", $"Stock insuficiente. Disponible: {producto.Unidades}.");
+                TempData["Error"] = "Error al leer el carrito.";
+                return RedirectToAction(nameof(Index));
             }
 
-            if (!ModelState.IsValid)
+            if (!items.Any())
             {
-                // Recargar datos y la vista principal en caso de error
-                var queryError = _context.Ventas.AsQueryable();
-                if (rol.Equals("Vendedor", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(nombreUsuario))
+                TempData["Error"] = "Agrega al menos un producto al carrito.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var productosDb = new List<Producto>();
+            foreach (var item in items)
+            {
+                var producto = await _context.Inventario.FindAsync(item.ProductoId);
+                if (producto == null)
                 {
-                    queryError = queryError.Where(v => v.Vendedor == nombreUsuario);
+                    TempData["Error"] = "Uno de los productos ya no existe.";
+                    return RedirectToAction(nameof(Index));
                 }
-                var ventasError = await queryError.OrderByDescending(v => v.Fecha).ToListAsync();
-
-                await CargarProductosYUsuarios();
-                ViewBag.FormModel = model;
-                ViewBag.RolUsuario = rol;
-                return View("Index", ventasError);
+                if (item.Unidades > producto.Unidades)
+                {
+                    TempData["Error"] = $"Stock insuficiente para {producto.ProductoNombre}. Disponible: {producto.Unidades}.";
+                    return RedirectToAction(nameof(Index));
+                }
+                productosDb.Add(producto);
             }
 
-            var subtotal = producto!.PrecioUnitario * model.Unidades;
-
-            var venta = new Venta
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                Producto = producto.ProductoNombre,
-                PrecioUnitario = producto.PrecioUnitario,
-                Unidades = model.Unidades,
-                SubTotal = subtotal,
-                TotalAPagar = subtotal,
-                Fecha = DateTime.UtcNow,
-                Vendedor = model.Vendedor
-            };
+                var venta = new Venta
+                {
+                    Vendedor = vendedor,
+                    Fecha = DateTime.UtcNow,
+                    TotalAPagar = 0
+                };
+                _context.Ventas.Add(venta);
+                await _context.SaveChangesAsync();
 
-            producto.Unidades -= model.Unidades;
+                decimal totalGeneral = 0;
 
-            _context.Ventas.Add(venta);
-            _context.Inventario.Update(producto);
-            await _context.SaveChangesAsync();
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var producto = productosDb[i];
+                    var subtotal = producto.PrecioUnitario * items[i].Unidades;
+                    totalGeneral += subtotal;
+
+                    _context.DetalleVentas.Add(new DetalleVenta
+                    {
+                        VentaId = venta.Id,
+                        Producto = producto.ProductoNombre,
+                        PrecioUnitario = producto.PrecioUnitario,
+                        Unidades = items[i].Unidades,
+                        Subtotal = subtotal
+                    });
+
+                    producto.Unidades -= items[i].Unidades;
+                    _context.Inventario.Update(producto);
+                }
+
+                venta.TotalAPagar = totalGeneral;
+                _context.Ventas.Update(venta);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Ocurrió un error al registrar la venta.";
+                return RedirectToAction(nameof(Index));
+            }
 
             TempData["Mensaje"] = "Venta registrada correctamente.";
             return RedirectToAction(nameof(Index));

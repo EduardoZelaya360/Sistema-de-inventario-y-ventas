@@ -33,9 +33,38 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                <!-- Bloque derecho: Perfil y sesión -->
-                <div class="collapse navbar-collapse justify-content-end" id="navbarContent">
-                    <ul class="navbar-nav">
+                <div class="collapse navbar-collapse" id="navbarContent">
+
+                    <!-- Links del menú, junto al nombre -->
+                   @if (estaLogueado)
+{
+    <ul class="navbar-nav mx-5">
+        <!-- Inventario y Ventas visibles para Administrador y Vendedor -->
+        <li class="nav-item mx-2">
+            <a class="nav-link text-light" asp-controller="Inventario" asp-action="Index">
+                <i class="bi bi-box-seam me-1"></i> Inventario
+            </a>
+        </li>
+        <li class="nav-item mx-2">
+            <a class="nav-link text-light" asp-controller="Ventas" asp-action="Index">
+                <i class="bi bi-cart-check me-1"></i> Ventas
+            </a>
+        </li>
+
+        <!-- Usuarios exclusivo para Administrador -->
+        @if (esAdministrador)
+        {
+            <li class="nav-item mx-2">
+                <a class="nav-link text-light" asp-controller="Usuarios" asp-action="Index">
+                    <i class="bi bi-people me-1"></i> Usuarios
+                </a>
+            </li>
+        }
+    </ul>
+}
+
+                    <!-- Bloque derecho: Perfil y sesión -->
+                    <ul class="navbar-nav ms-auto">
                         @if (estaLogueado)
                         {
                             <li class="nav-item dropdown">
@@ -83,70 +112,11 @@
         </nav>
     </header>
 
-    <!-- Contenedor Principal -->
+    <!-- Contenedor Principal (sin sidebar) -->
     <div class="container-fluid">
-        @if (estaLogueado)
-        {
-            <div class="row">
-                <!-- Sidebar Dinámico para Administrador o Vendedor -->
-                <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse rounded-4 p-3 mb-4 text-white" style="min-height: 80vh;">
-                    <div class="position-sticky">
-                        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase fs-7">
-                            <span>Panel @rolUsuario</span>
-                        </h6>
-                        <ul class="nav flex-column nav-pills">
-                            <li class="nav-item mb-2">
-                                <a class="nav-link text-white d-flex align-items-center" asp-controller="Home" asp-action="Index">
-                                    <i class="bi bi-speedometer2 me-2"></i> Inicio
-                                </a>
-                            </li>
-
-                            @if (esAdministrador)
-                            {
-                                <li class="nav-item mb-2">
-                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Inventario" asp-action="Index">
-                                        <i class="bi bi-box-seam me-2"></i> Inventario
-                                    </a>
-                                </li>
-                                <li class="nav-item mb-2">
-                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Ventas" asp-action="Index">
-                                        <i class="bi bi-cart-check me-2"></i> Ventas
-                                    </a>
-                                </li>
-                                <li class="nav-item mb-2">
-                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Usuarios" asp-action="Index">
-                                        <i class="bi bi-people me-2"></i> Usuarios
-                                    </a>
-                                </li>
-                            }
-
-                            @if (esVendedor)
-                            {
-                                <li class="nav-item mb-2">
-                                    <a class="nav-link text-white d-flex align-items-center" asp-controller="Ventas" asp-action="Index">
-                                        <i class="bi bi-cart-check me-2"></i> Ventas
-                                    </a>
-                                </li>
-                            }
-                        </ul>
-                    </div>
-                </nav>
-
-                <!-- Contenido con Sidebar -->
-                <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                    @RenderBody()
-                </main>
-            </div>
-        }
-        else
-        {
-            <!-- Contenido cuando no ha iniciado sesión (pantalla de login o bienvenida pública) -->
-            <div class="container">
-                <main role="main" class="pb-3">
-                    @RenderBody()
-                </main>
-            </div>
-        }
+        <main role="main" class="pb-3 px-md-4">
+            @RenderBody()
+        </main>
     </div>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

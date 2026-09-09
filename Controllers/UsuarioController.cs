@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sistema_de_inventario_y_ventas.Data;
 using Sistema_de_inventario_y_ventas.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace Sistema_de_inventario_y_ventas.Controllers
 {
@@ -44,6 +45,9 @@ namespace Sistema_de_inventario_y_ventas.Controllers
 
             if (ModelState.IsValid)
             {
+                var passwordHasher = new PasswordHasher<Usuario>();
+                usuario.Contrasena = passwordHasher.HashPassword(usuario, usuario.Contrasena);
+
                 _context.Add(usuario);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -61,6 +65,8 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             var usuario = await _context.Usuarios.FindAsync(id);
             if (usuario == null) return NotFound();
 
+            // Limpiamos el campo para que el hash no se muestre en el formulario
+            usuario.Contrasena = string.Empty;
             return View(usuario);
         }
 
@@ -72,10 +78,28 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             if (!EsAdministrador()) return RedirectToAction("Index", "Home");
             if (id != usuario.Id) return NotFound();
 
+            if (string.IsNullOrWhiteSpace(usuario.Contrasena))
+            {
+                ModelState.Remove(nameof(usuario.Contrasena));
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
+                    var usuarioActual = await _context.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id);
+                    if (usuarioActual == null) return NotFound();
+
+                    if (string.IsNullOrWhiteSpace(usuario.Contrasena))
+                    {
+                        usuario.Contrasena = usuarioActual.Contrasena;
+                    }
+                    else
+                    {
+                        var passwordHasher = new PasswordHasher<Usuario>();
+                        usuario.Contrasena = passwordHasher.HashPassword(usuario, usuario.Contrasena);
+                    }
+
                     _context.Update(usuario);
                     await _context.SaveChangesAsync();
                 }

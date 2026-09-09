@@ -1,42 +1,190 @@
 @model List<Sistema_de_inventario_y_ventas.Models.Producto>
-
 @{
     ViewData["Title"] = "Inventario";
+    var tabActivo = ViewBag.TabActivo as string ?? "lista";
+    bool esAdmin = Context.Session.GetString("UsuarioRol") == "Administrador";
 }
 
-<h1>Inventario</h1>
+<h1><i class="bi bi-box-seam me-2"></i>Inventario</h1>
 
 @if (TempData["Mensaje"] != null)
 {
     <div class="alert alert-success">@TempData["Mensaje"]</div>
 }
+@if (TempData["ErrorCategoria"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorCategoria"]</div>
+}
 
-<a asp-action="Create" class="btn btn-primary mb-3">Agregar producto</a>
+<ul class="nav nav-tabs mb-3" id="inventarioTabs" role="tablist">
+    <!-- La pestaña Lista siempre está visible para todos (agregamos 'active') -->
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-lista-btn" data-bs-toggle="tab" data-bs-target="#tab-lista"
+                type="button" role="tab" aria-controls="tab-lista" aria-selected="true">
+            <i class="bi bi-list-ul me-1"></i> Lista de inventario
+        </button>
+    </li>
 
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Producto</th>
-            <th>Categoría</th>
-            <th>Precio unitario</th>
-            <th>Unidades</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var p in Model)
-        {
-            <tr class="@(p.Unidades <= 5 ? "table-danger" : "")">
-                <td>@p.ProductoNombre</td>
-                <td>@p.NombreCategoria</td>
-                <td>@p.PrecioUnitario.ToString("C")</td>
-                <td>@p.Unidades</td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">Ver</a>
-                    <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary">Editar</a>
-                    <a asp-action="Delete" asp-route-id="@p.Id" class="btn btn-sm btn-outline-danger">Eliminar</a>
-                </td>
-            </tr>
+    @if (esAdmin)
+    {
+        <!-- Pestañas exclusivas para Administradores -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-agregar-btn" data-bs-toggle="tab" data-bs-target="#tab-agregar"
+                    type="button" role="tab" aria-controls="tab-agregar" aria-selected="false">
+                <i class="bi bi-plus-circle me-1"></i> Agregar producto
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-categorias-btn" data-bs-toggle="tab" data-bs-target="#tab-categorias"
+                    type="button" role="tab" aria-controls="tab-categorias" aria-selected="false">
+                <i class="bi bi-tags me-1"></i> Agregar categoría
+            </button>
+        </li>
+    }
+</ul>
+
+<div class="tab-content" id="inventarioTabsContent">
+
+    <!-- Tab 1: Lista (Agregamos 'show active' para que se muestre por defecto) -->
+    <div class="tab-pane fade show active" id="tab-lista" role="tabpanel" aria-labelledby="tab-lista-btn">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Precio unitario</th>
+                    <th>Unidades</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr class="@(p.Unidades <= 5 ? "table-danger" : "")">
+                        <td>@p.ProductoNombre</td>
+                        <td>@p.NombreCategoria</td>
+                        <td>@p.PrecioUnitario.ToString("C")</td>
+                        <td>@p.Unidades</td>
+                        <td>
+                    
+                            @if (esAdmin)
+                            {
+                                <!-- Los botones Editar y Eliminar solo se muestran si es Administrador -->
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-abrir-modal"
+                                        data-url="@Url.Action("EditModal", new { id = p.Id })">Editar</button>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-abrir-modal"
+                                        data-url="@Url.Action("DeleteModal", new { id = p.Id })">Eliminar</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (esAdmin)
+    {
+        <!-- Tab 2: Formulario de agregar producto (Solo Admin) -->
+        <div class="tab-pane fade" id="tab-agregar" role="tabpanel" aria-labelledby="tab-agregar-btn">
+            @await Html.PartialAsync("_FormProducto", new Sistema_de_inventario_y_ventas.Models.Producto())
+        </div>
+
+        <!-- Tab 3: Agregar categoría (Solo Admin) -->
+        <div class="tab-pane fade" id="tab-categorias" role="tabpanel" aria-labelledby="tab-categorias-btn">
+            <div class="row">
+                <div class="col-md-6">
+                    <form asp-action="CreateCategoria" method="post" id="formCategoria">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre de la categoría</label>
+                            <input type="text" name="nombreCategoria" id="inputCategoria" class="form-control" autocomplete="off" />
+                            <div id="alertaCategoriaDuplicada" class="alert alert-warning mt-2 py-2 d-none">
+                                Ya existe una categoría con ese nombre.
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarCategoria">Guardar categoría</button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Categorías existentes</label>
+                    <ul class="list-group">
+                        @foreach (var c in (List<Sistema_de_inventario_y_ventas.Models.Categoria>)ViewBag.Categorias)
+                        {
+                            <li class="list-group-item">@c.NombreCategoria</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>
+
+<!-- Modal compartido para Ver / Editar / Eliminar -->
+<div class="modal fade" id="modalProducto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content" id="modalProductoContenido">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border" role="status"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // --- Activar el tab correcto según TempData (si vienes de crear/editar algo) ---
+        const tabActivo = '@tabActivo';
+        const idsTab = { lista: 'tab-lista-btn', agregar: 'tab-agregar-btn', categorias: 'tab-categorias-btn' };
+        const btnTabActivo = document.getElementById(idsTab[tabActivo] || 'tab-lista-btn');
+        if (btnTabActivo && tabActivo !== 'lista') {
+            new bootstrap.Tab(btnTabActivo).show();
         }
-    </tbody>
-</table>
+
+        // --- Modal compartido (Ver / Editar / Eliminar) ---
+        const modalProducto = new bootstrap.Modal(document.getElementById('modalProducto'));
+        const modalProductoContenido = document.getElementById('modalProductoContenido');
+
+        document.querySelectorAll('.btn-abrir-modal').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                modalProductoContenido.innerHTML = `
+                    <div class="modal-body text-center py-5">
+                        <div class="spinner-border" role="status"></div>
+                    </div>`;
+                modalProducto.show();
+
+                const respuesta = await fetch(btn.dataset.url);
+                const html = await respuesta.text();
+                modalProductoContenido.innerHTML = html;
+            });
+        });
+
+        // --- Validación de categoría duplicada (Se ejecuta solo si el bloque de admin está presente) ---
+        const inputCategoria = document.getElementById('inputCategoria');
+        if (inputCategoria) {
+            const categoriasExistentes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                ((List<string>)ViewBag.CategoriasExistentes).Select(c => c.ToLower())
+            ));
+
+            const alertaCategoriaDuplicada = document.getElementById('alertaCategoriaDuplicada');
+            const btnGuardarCategoria = document.getElementById('btnGuardarCategoria');
+
+            function validarCategoriaDuplicada() {
+                const valor = inputCategoria.value.trim().toLowerCase();
+                const existe = valor !== '' && categoriasExistentes.includes(valor);
+
+                alertaCategoriaDuplicada.classList.toggle('d-none', !existe);
+                inputCategoria.classList.toggle('is-invalid', existe);
+                btnGuardarCategoria.disabled = existe;
+            }
+
+            inputCategoria.addEventListener('input', validarCategoriaDuplicada);
+
+            document.getElementById('formCategoria').addEventListener('submit', function (e) {
+                validarCategoriaDuplicada();
+                if (!alertaCategoriaDuplicada.classList.contains('d-none')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    </script>
+}

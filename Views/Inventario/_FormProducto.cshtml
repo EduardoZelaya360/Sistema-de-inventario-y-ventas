@@ -1,0 +1,79 @@
+@model Sistema_de_inventario_y_ventas.Models.Producto
+
+<form asp-action="Create" method="post" id="formProducto">
+    <div class="mb-3">
+        <label class="form-label">Producto</label>
+        <input asp-for="ProductoNombre" id="inputProducto" class="form-control" list="listaProductos" autocomplete="off" />
+        <datalist id="listaProductos">
+            @foreach (var nombre in (List<string>)ViewBag.ProductosExistentes)
+            {
+                <option value="@nombre"></option>
+            }
+        </datalist>
+        <span asp-validation-for="ProductoNombre" class="text-danger"></span>
+        <div id="alertaDuplicado" class="alert alert-warning mt-2 py-2 d-none">
+            Ya existe un producto con ese nombre. Revisa la lista de inventario en vez de crear uno nuevo.
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Categoría</label>
+        <select asp-for="NombreCategoria" class="form-select">
+            <option value="">-- Selecciona --</option>
+            @foreach (var c in (List<Sistema_de_inventario_y_ventas.Models.Categoria>)ViewBag.Categorias)
+            {
+                <option value="@c.NombreCategoria">@c.NombreCategoria</option>
+            }
+        </select>
+        <span asp-validation-for="NombreCategoria" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Descripción</label>
+        <textarea asp-for="Descripcion" class="form-control"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Precio unitario</label>
+        <input asp-for="PrecioUnitario" class="form-control" type="number" step="0.01" />
+        <span asp-validation-for="PrecioUnitario" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Unidades</label>
+        <input asp-for="Unidades" class="form-control" type="number" />
+        <span asp-validation-for="Unidades" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
+</form>
+
+<script>
+    (function () {
+        const productosExistentes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            ((List<string>)ViewBag.ProductosExistentes).Select(p => p.ToLower())
+        ));
+
+        const inputProducto = document.getElementById('inputProducto');
+        const alertaDuplicado = document.getElementById('alertaDuplicado');
+        const btnGuardar = document.getElementById('btnGuardar');
+
+        function validarDuplicado() {
+            const valor = inputProducto.value.trim().toLowerCase();
+            const existe = valor !== '' && productosExistentes.includes(valor);
+
+            alertaDuplicado.classList.toggle('d-none', !existe);
+            inputProducto.classList.toggle('is-invalid', existe);
+            btnGuardar.disabled = existe;
+        }
+
+        inputProducto.addEventListener('input', validarDuplicado);
+
+        document.getElementById('formProducto').addEventListener('submit', function (e) {
+            validarDuplicado();
+            if (!alertaDuplicado.classList.contains('d-none')) {
+                e.preventDefault();
+            }
+        });
+    })();
+</script>

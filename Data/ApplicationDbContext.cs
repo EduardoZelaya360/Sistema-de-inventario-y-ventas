@@ -11,6 +11,7 @@ namespace Sistema_de_inventario_y_ventas.Data
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Producto> Inventario { get; set; }
         public DbSet<Venta> Ventas { get; set; }
+        public DbSet<DetalleVenta> DetalleVentas { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +36,11 @@ namespace Sistema_de_inventario_y_ventas.Data
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            modelBuilder.Entity<DetalleVenta>()
+                .HasOne(d => d.Venta)
+                .WithMany(v => v.Detalles)
+                .HasForeignKey(d => d.VentaId);
         }
     }
 }

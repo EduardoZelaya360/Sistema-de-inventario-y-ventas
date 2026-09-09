@@ -26,7 +26,11 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             var inicioSemanaActual = hoy.AddDays(-6);
             var inicioSemanaAnterior = hoy.AddDays(-13);
 
-            var todasLasVentas = await _context.Ventas.ToListAsync();
+            var todasLasVentas = await _context.Ventas
+                .Include(v => v.Detalles)
+                .ToListAsync();
+
+            var todosLosDetalles = todasLasVentas.SelectMany(v => v.Detalles).ToList();
             var todoElInventario = await _context.Inventario.ToListAsync();
 
             var ventasHoy = todasLasVentas.Where(v => v.Fecha >= hoy && v.Fecha < manana).ToList();
@@ -40,19 +44,19 @@ namespace Sistema_de_inventario_y_ventas.Controllers
                 ingresosPorDia.Add(todasLasVentas.Where(v => v.Fecha.Date == dia).Sum(v => v.TotalAPagar));
             }
 
-            // --- Top 5 productos más vendidos ---
-            var productosTop = todasLasVentas
-                .GroupBy(v => v.Producto)
-                .Select(g => new { Producto = g.Key, Unidades = g.Sum(v => v.Unidades) })
+            // --- Top 5 productos más vendidos (ahora desde detalle_venta) ---
+            var productosTop = todosLosDetalles
+                .GroupBy(d => d.Producto)
+                .Select(g => new { Producto = g.Key, Unidades = g.Sum(d => d.Unidades) })
                 .OrderByDescending(g => g.Unidades)
                 .Take(5)
                 .ToList();
 
-            // --- Ventas por categoría (join en memoria: venta.Producto = inventario.ProductoNombre) ---
-            var ventasPorCategoria = todasLasVentas
-                .Join(todoElInventario, v => v.Producto, p => p.ProductoNombre, (v, p) => new { v.TotalAPagar, p.NombreCategoria })
+            // --- Ventas por categoría (join detalle_venta con inventario) ---
+            var ventasPorCategoria = todosLosDetalles
+                .Join(todoElInventario, d => d.Producto, p => p.ProductoNombre, (d, p) => new { d.Subtotal, p.NombreCategoria })
                 .GroupBy(x => x.NombreCategoria)
-                .Select(g => new { Categoria = g.Key, Total = g.Sum(x => x.TotalAPagar) })
+                .Select(g => new { Categoria = g.Key, Total = g.Sum(x => x.Subtotal) })
                 .OrderByDescending(g => g.Total)
                 .ToList();
 

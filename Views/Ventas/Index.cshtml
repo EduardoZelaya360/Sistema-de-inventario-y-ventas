@@ -1,7 +1,6 @@
 @model List<Sistema_de_inventario_y_ventas.Models.Venta>
 @{
     ViewData["Title"] = "Gestión de Ventas";
-    var formModel = ViewBag.FormModel as Sistema_de_inventario_y_ventas.Models.VentaFormViewModel ?? new Sistema_de_inventario_y_ventas.Models.VentaFormViewModel();
     var rolUsuario = ViewBag.RolUsuario as string ?? Context.Session.GetString("UsuarioRol");
 }
 
@@ -16,19 +15,14 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
-
-@if (!ViewData.ModelState.IsValid)
+@if (TempData["Error"] != null)
 {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-        {
-            <p class="mb-0">@error.ErrorMessage</p>
-        }
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
 
-<!-- Pestañas de navegación interna -->
 <ul class="nav nav-tabs mb-4" id="ventasTab" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active fw-semibold" id="registrar-tab" data-bs-toggle="tab" data-bs-target="#registrar-pane" type="button" role="tab">
@@ -43,34 +37,75 @@
 </ul>
 
 <div class="tab-content" id="ventasTabContent">
-    
+
     <!-- PESTAÑA 1: REGISTRAR NUEVA VENTA -->
     <div class="tab-pane fade show active" id="registrar-pane" role="tabpanel">
         <div class="row justify-content-center">
-            <div class="col-md-8">
+            <div class="col-md-9">
                 <div class="card shadow-sm border-0 rounded-4 p-4 bg-white">
                     <h4 class="fw-bold mb-3 text-dark">Nueva Transacción</h4>
-                    
-                    <form asp-action="Create" method="post">
-                        <div class="mb-3">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Producto</label>
-                            <select name="ProductoId" class="form-select" required>
-                                <option value="">-- Selecciona un producto --</option>
+                            <select id="selectProducto" class="form-select">
                                 @foreach (var p in (List<Sistema_de_inventario_y_ventas.Models.Producto>)ViewBag.Productos)
                                 {
-                                    <option value="@p.Id">@p.ProductoNombre (@p.Unidades disponibles - @p.PrecioUnitario.ToString("C") c/u)</option>
+                                    <option value="@p.Id" data-nombre="@p.ProductoNombre" data-precio="@p.PrecioUnitario" data-stock="@p.Unidades">
+                                        @p.ProductoNombre (@p.Unidades disponibles - @p.PrecioUnitario.ToString("C"))
+                                    </option>
                                 }
                             </select>
                         </div>
-
-                        <div class="mb-3">
+                        <div class="col-md-3">
                             <label class="form-label fw-semibold">Cantidad</label>
-                            <input name="Unidades" class="form-control" type="number" min="1" value="@formModel.Unidades" required />
+                            <input id="inputCantidad" class="form-control" type="number" min="1" value="1" />
                         </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" id="btnAgregarItem" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-plus-lg"></i> Agregar al carrito
+                            </button>
+                        </div>
+                    </div>
 
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th></tr>
+                        </thead>
+                        <tbody id="tablaCarrito">
+                            <tr id="filaVacia"><td colspan="5" class="text-center text-muted">El carrito está vacío</td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="3" class="text-end">Total</td>
+                                <td id="totalCarrito">$0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
 
-                        <div class="d-flex justify-content-end mt-4">
-                            <button type="submit" class="btn btn-success px-4">
+                    <form asp-action="Create" method="post" id="formVenta">
+                        @if (rolUsuario == "Administrador")
+                        {
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Vendedor</label>
+                                <select name="vendedor" class="form-select">
+                                    @foreach (var u in (List<Sistema_de_inventario_y_ventas.Models.Usuario>)ViewBag.Usuarios)
+                                    {
+                                        <option value="@u.Nombre">@u.Nombre</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="hidden" name="vendedor" value="@Context.Session.GetString("UsuarioNombre")" />
+                        }
+
+                        <input type="hidden" name="itemsJson" id="itemsJson" />
+
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="submit" class="btn btn-success px-4" id="btnRegistrarVenta" disabled>
                                 <i class="bi bi-check-lg me-1"></i> Registrar Venta
                             </button>
                         </div>
@@ -80,7 +115,7 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: HISTORIAL DE VENTAS (SOLO LECTURA) -->
+    <!-- PESTAÑA 2: HISTORIAL DE VENTAS -->
     <div class="tab-pane fade" id="historial-pane" role="tabpanel">
         <div class="card shadow-sm border-0 rounded-4 p-3 bg-white">
             <div class="d-flex justify-content-between align-items-center mb-3 px-2">
@@ -95,34 +130,52 @@
                     <thead class="table-dark">
                         <tr>
                             <th>Fecha</th>
-                            <th>Producto</th>
-                            <th>Unidades</th>
-                            <th>Precio Unitario</th>
                             <th>Total</th>
                             <th>Vendedor</th>
+                            <th>Acciones</th> <!-- Cambiado para el botón del modal -->
                         </tr>
                     </thead>
                     <tbody>
                         @if (!Model.Any())
                         {
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">No hay registros de ventas disponibles.</td>
+                                <td colspan="4" class="text-center py-4 text-muted">No hay registros de ventas disponibles.</td>
                             </tr>
                         }
                         else
                         {
                             @foreach (var v in Model)
                             {
+                                // SOLUCIÓN AL CRASHEO: Creamos un objeto limpio sin referencias circulares a la base de datos
+                                var detallesLimpios = v.Detalles.Select(d => new {
+                                    producto = d.Producto,
+                                    unidades = d.Unidades,
+                                    precioUnitario = d.PrecioUnitario,
+                                    subtotal = d.Subtotal
+                                });
+                                
+                                // Razor escapará automáticamente las comillas de este JSON
+                                var jsonDetalles = System.Text.Json.JsonSerializer.Serialize(detallesLimpios);
+
                                 <tr>
                                     <td>@v.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td class="fw-semibold">@v.Producto</td>
-                                    <td>@v.Unidades</td>
-                                    <td>@v.PrecioUnitario.ToString("C")</td>
                                     <td class="fw-bold text-success">@v.TotalAPagar.ToString("C")</td>
                                     <td>
                                         <span class="badge bg-info text-dark">
                                             <i class="bi bi-person me-1"></i> @v.Vendedor
                                         </span>
+                                    </td>
+                                    <td>
+                                        <!-- Botón que abre el modal -->
+                                        <button type="button" class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#modalDetalleVenta"
+                                                data-fecha="@v.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
+                                                data-vendedor="@v.Vendedor"
+                                                data-total="@v.TotalAPagar.ToString("C")"
+                                                data-detalles="@jsonDetalles">
+                                            <i class="bi bi-eye"></i> Ver Detalles
+                                        </button>
                                     </td>
                                 </tr>
                             }
@@ -132,5 +185,174 @@
             </div>
         </div>
     </div>
-
 </div>
+
+<!-- MODAL PARA MOSTRAR LOS DETALLES -->
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1" aria-labelledby="modalDetalleLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalDetalleLabel"><i class="bi bi-receipt me-2"></i>Detalle de Transacción</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-4 bg-light p-3 rounded">
+                    <div class="col-md-4">
+                        <span class="text-muted small d-block">Fecha</span>
+                        <strong id="mFecha"></strong>
+                    </div>
+                    <div class="col-md-4">
+                        <span class="text-muted small d-block">Vendedor</span>
+                        <strong id="mVendedor"></strong>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <span class="text-muted small d-block">Total Pagado</span>
+                        <strong id="mTotal" class="text-success fs-5"></strong>
+                    </div>
+                </div>
+
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-center">Cant.</th>
+                            <th class="text-end">Precio Unit.</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mTablaDetalles">
+                        <!-- Llenado por JS -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ----------------------------------------------------
+        // LÓGICA DEL CARRITO (PESTAÑA 1)
+        // ----------------------------------------------------
+        const carrito = [];
+
+        const selectProducto = document.getElementById('selectProducto');
+        const inputCantidad = document.getElementById('inputCantidad');
+        const tablaCarrito = document.getElementById('tablaCarrito');
+        const filaVacia = document.getElementById('filaVacia');
+        const totalCarrito = document.getElementById('totalCarrito');
+        const itemsJson = document.getElementById('itemsJson');
+        const btnRegistrarVenta = document.getElementById('btnRegistrarVenta');
+
+        function renderCarrito() {
+            tablaCarrito.innerHTML = '';
+
+            if (carrito.length === 0) {
+                tablaCarrito.appendChild(filaVacia);
+                btnRegistrarVenta.disabled = true;
+            } else {
+                btnRegistrarVenta.disabled = false;
+                carrito.forEach((item, index) => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `
+                        <td>${item.nombre}</td>
+                        <td>${item.cantidad}</td>
+                        <td>$${item.precio.toFixed(2)}</td>
+                        <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger btn-quitar" data-index="${index}"><i class="bi bi-trash"></i></button></td>
+                    `;
+                    tablaCarrito.appendChild(fila);
+                });
+            }
+
+            const total = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+            totalCarrito.textContent = '$' + total.toFixed(2);
+
+            itemsJson.value = JSON.stringify(carrito.map(item => ({
+                ProductoId: item.productoId,
+                Unidades: item.cantidad
+            })));
+        }
+
+        document.getElementById('btnAgregarItem').addEventListener('click', () => {
+            const opcion = selectProducto.selectedOptions[0];
+            const productoId = parseInt(selectProducto.value);
+            const nombre = opcion.dataset.nombre;
+            const precio = parseFloat(opcion.dataset.precio);
+            const stockDisponible = parseInt(opcion.dataset.stock);
+            const cantidad = parseInt(inputCantidad.value);
+
+            if (!cantidad || cantidad < 1) return;
+
+            const existente = carrito.find(item => item.productoId === productoId);
+            const cantidadAcumulada = (existente ? existente.cantidad : 0) + cantidad;
+
+            if (cantidadAcumulada > stockDisponible) {
+                alert(`Stock insuficiente. Disponible: ${stockDisponible}`);
+                return;
+            }
+
+            if (existente) {
+                existente.cantidad = cantidadAcumulada;
+            } else {
+                carrito.push({ productoId, nombre, precio, cantidad });
+            }
+
+            inputCantidad.value = 1;
+            renderCarrito();
+        });
+
+        tablaCarrito.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-quitar');
+            if (!btn) return;
+            carrito.splice(parseInt(btn.dataset.index), 1);
+            renderCarrito();
+        });
+
+        renderCarrito();
+
+        // ----------------------------------------------------
+        // LÓGICA DEL MODAL DE DETALLES (PESTAÑA 2)
+        // ----------------------------------------------------
+        const modalDetalleVenta = document.getElementById('modalDetalleVenta');
+        
+        if (modalDetalleVenta) {
+            modalDetalleVenta.addEventListener('show.bs.modal', event => {
+                // Obtenemos el botón que fue clickeado
+                const button = event.relatedTarget;
+                
+                // Extraemos la información de los atributos 'data-'
+                const fecha = button.getAttribute('data-fecha');
+                const vendedor = button.getAttribute('data-vendedor');
+                const total = button.getAttribute('data-total');
+                const detallesRaw = button.getAttribute('data-detalles');
+                
+                // Parseamos el JSON que creamos limpio en C#
+                const detalles = JSON.parse(detallesRaw);
+
+                // Llenamos la información general en el modal
+                document.getElementById('mFecha').textContent = fecha;
+                document.getElementById('mVendedor').textContent = vendedor;
+                document.getElementById('mTotal').textContent = total;
+
+                // Llenamos la tabla de detalles en el modal
+                const tbody = document.getElementById('mTablaDetalles');
+                tbody.innerHTML = ''; // Limpiar filas anteriores
+
+                detalles.forEach(d => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${d.producto}</td>
+                        <td class="text-center">${d.unidades}</td>
+                        <td class="text-end">$${d.precioUnitario.toFixed(2)}</td>
+                        <td class="text-end fw-bold">$${d.subtotal.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+        }
+    </script>
+}

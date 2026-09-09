@@ -18,18 +18,12 @@
 <form asp-action="Create" method="post">
     <div class="mb-3">
         <label class="form-label">Producto</label>
-        <select asp-for="ProductoId" class="form-select">
-            <option value="">-- Selecciona --</option>
-            @foreach (var p in (List<Sistema_de_inventario_y_ventas.Models.Producto>)ViewBag.Productos)
-            {
-                <option value="@p.Id">@p.ProductoNombre (@p.Unidades disponibles - @p.PrecioUnitario.ToString("C") c/u)</option>
-            }
-        </select>
+        <select asp-for="Items[0].ProductoId" class="form-select"></select>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Cantidad</label>
-        <input asp-for="Unidades" class="form-control" type="number" min="1" />
+        <input asp-for="Items[0].Unidades" class="form-control" type="number" min="1" />
     </div>
 
     <div class="mb-3">

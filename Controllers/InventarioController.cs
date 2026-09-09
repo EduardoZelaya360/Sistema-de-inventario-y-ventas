@@ -14,6 +14,11 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             _context = context;
         }
 
+        private bool EsAdministrador()
+        {
+            return HttpContext.Session.GetString("UsuarioRol") == "Administrador";
+        }
+
         // GET: /Inventario
         public async Task<IActionResult> Index()
         {
@@ -22,10 +27,58 @@ namespace Sistema_de_inventario_y_ventas.Controllers
                 .OrderBy(p => p.ProductoNombre)
                 .ToListAsync();
 
+            var categorias = await _context.Categorias
+                .OrderBy(c => c.NombreCategoria)
+                .ToListAsync();
+
+            ViewBag.Categorias = categorias;
+            ViewBag.ProductosExistentes = productos.Select(p => p.ProductoNombre).ToList();
+            ViewBag.CategoriasExistentes = categorias.Select(c => c.NombreCategoria).ToList();
+            ViewBag.TabActivo = TempData["TabActivo"] as string ?? "lista";
+
             return View(productos);
         }
 
-        // GET: /Inventario/Details/5
+        // ---------- Partials para modales ----------
+
+        // GET: /Inventario/DetailsModal/5
+        public async Task<IActionResult> DetailsModal(int id)
+        {
+            var producto = await _context.Inventario
+                .Include(p => p.Categoria)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (producto == null) return NotFound();
+            return PartialView("_DetailsModal", producto);
+        }
+
+        // GET: /Inventario/EditModal/5
+        public async Task<IActionResult> EditModal(int id)
+        {
+            if (!EsAdministrador()) return Forbid();
+
+            var producto = await _context.Inventario.FindAsync(id);
+            if (producto == null) return NotFound();
+
+            ViewBag.Categorias = await _context.Categorias.OrderBy(c => c.NombreCategoria).ToListAsync();
+            return PartialView("_EditModal", producto);
+        }
+
+        // GET: /Inventario/DeleteModal/5
+        public async Task<IActionResult> DeleteModal(int id)
+        {
+            if (!EsAdministrador()) return Forbid();
+
+            var producto = await _context.Inventario
+                .Include(p => p.Categoria)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (producto == null) return NotFound();
+            return PartialView("_DeleteModal", producto);
+        }
+
+        // ---------- CRUD Producto ----------
+
         public async Task<IActionResult> Details(int id)
         {
             var producto = await _context.Inventario
@@ -36,28 +89,25 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             return View(producto);
         }
 
-        // GET: /Inventario/Create
         public async Task<IActionResult> Create()
         {
-            ViewBag.Categorias = await _context.Categorias
-                .OrderBy(c => c.NombreCategoria)
-                .ToListAsync();
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
 
-            ViewBag.ProductosExistentes = await _context.Inventario
-                .Select(p => p.ProductoNombre)
-                .ToListAsync();
-
+            ViewBag.Categorias = await _context.Categorias.OrderBy(c => c.NombreCategoria).ToListAsync();
+            ViewBag.ProductosExistentes = await _context.Inventario.Select(p => p.ProductoNombre).ToListAsync();
             return View();
         }
 
-        // POST: /Inventario/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Producto producto)
         {
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
+
             if (!ModelState.IsValid)
             {
                 ViewBag.Categorias = await _context.Categorias.OrderBy(c => c.NombreCategoria).ToListAsync();
+                ViewBag.ProductosExistentes = await _context.Inventario.Select(p => p.ProductoNombre).ToListAsync();
                 return View(producto);
             }
 
@@ -65,12 +115,14 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Mensaje"] = "Producto agregado correctamente.";
+            TempData["TabActivo"] = "lista";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Inventario/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
+
             var producto = await _context.Inventario.FindAsync(id);
             if (producto == null) return NotFound();
 
@@ -78,11 +130,11 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             return View(producto);
         }
 
-        // POST: /Inventario/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Producto producto)
         {
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
             if (id != producto.Id) return NotFound();
 
             if (!ModelState.IsValid)
@@ -104,12 +156,14 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             }
 
             TempData["Mensaje"] = "Producto actualizado correctamente.";
+            TempData["TabActivo"] = "lista";
             return RedirectToAction(nameof(Index));
         }
 
-        // GET: /Inventario/Delete/5
         public async Task<IActionResult> Delete(int id)
         {
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
+
             var producto = await _context.Inventario
                 .Include(p => p.Categoria)
                 .FirstOrDefaultAsync(p => p.Id == id);
@@ -118,11 +172,12 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             return View(producto);
         }
 
-        // POST: /Inventario/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
+
             var producto = await _context.Inventario.FindAsync(id);
             if (producto != null)
             {
@@ -131,6 +186,40 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             }
 
             TempData["Mensaje"] = "Producto eliminado.";
+            TempData["TabActivo"] = "lista";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ---------- Categorías ----------
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateCategoria(string nombreCategoria)
+        {
+            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
+
+            if (string.IsNullOrWhiteSpace(nombreCategoria))
+            {
+                TempData["ErrorCategoria"] = "El nombre de la categoría es obligatorio.";
+                TempData["TabActivo"] = "categorias";
+                return RedirectToAction(nameof(Index));
+            }
+
+            bool existe = await _context.Categorias
+                .AnyAsync(c => c.NombreCategoria.ToLower() == nombreCategoria.Trim().ToLower());
+
+            if (existe)
+            {
+                TempData["ErrorCategoria"] = $"La categoría \"{nombreCategoria}\" ya existe.";
+                TempData["TabActivo"] = "categorias";
+                return RedirectToAction(nameof(Index));
+            }
+
+            _context.Categorias.Add(new Categoria { NombreCategoria = nombreCategoria.Trim() });
+            await _context.SaveChangesAsync();
+
+            TempData["Mensaje"] = "Categoría agregada correctamente.";
+            TempData["TabActivo"] = "categorias";
             return RedirectToAction(nameof(Index));
         }
     }

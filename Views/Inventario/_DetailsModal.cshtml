@@ -1,0 +1,24 @@
+@model Sistema_de_inventario_y_ventas.Models.Producto
+
+<div class="modal-header">
+    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>@Model.ProductoNombre</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+    <dl class="row mb-0">
+        <dt class="col-sm-4">Categoría</dt>
+        <dd class="col-sm-8">@Model.NombreCategoria</dd>
+
+        <dt class="col-sm-4">Descripción</dt>
+        <dd class="col-sm-8">@(Model.Descripcion ?? "—")</dd>
+
+        <dt class="col-sm-4">Precio unitario</dt>
+        <dd class="col-sm-8">@Model.PrecioUnitario.ToString("C")</dd>
+
+        <dt class="col-sm-4">Unidades</dt>
+        <dd class="col-sm-8">@Model.Unidades</dd>
+    </dl>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+</div>

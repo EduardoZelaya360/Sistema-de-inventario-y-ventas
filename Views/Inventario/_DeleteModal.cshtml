@@ -1,0 +1,26 @@
+@model Sistema_de_inventario_y_ventas.Models.Producto
+
+<div class="modal-header">
+    <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Eliminar producto</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<div class="modal-body">
+    <p>¿Seguro que quieres eliminar este producto?</p>
+    <dl class="row mb-0">
+        <dt class="col-sm-4">Producto</dt>
+        <dd class="col-sm-8">@Model.ProductoNombre</dd>
+
+        <dt class="col-sm-4">Categoría</dt>
+        <dd class="col-sm-8">@Model.NombreCategoria</dd>
+
+        <dt class="col-sm-4">Unidades</dt>
+        <dd class="col-sm-8">@Model.Unidades</dd>
+    </dl>
+</div>
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
+    </div>
+</form>
