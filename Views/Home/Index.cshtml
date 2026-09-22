@@ -3,7 +3,29 @@
     ViewData["Title"] = "Inicio";
     var nombreUsuario = Context.Session.GetString("UsuarioNombre");
     var cambioPositivo = Model.PorcentajeCambioSemanal >= 0;
+    var topCriticos = Model.ProductosStockBajo.Take(3).ToList();
 }
+
+<style>
+    @@keyframes parpadeoAlerta {
+        0%   { background-color: #f8d7da; border-color: #dc3545; }
+        50%  { background-color: #fff3cd; border-color: #ffc107; }
+        100% { background-color: #f8d7da; border-color: #dc3545; }
+    }
+
+    .card-alerta-critica {
+        animation: parpadeoAlerta 1.8s infinite;
+        border-width: 2px;
+        border-style: solid;
+    }
+
+    /* Contenedor con altura fija para controlar el tamaño visual */
+    .chart-container {
+        position: relative;
+        height: 220px;
+        width: 100%;
+    }
+</style>
 
 <div class="p-5 mb-4 bg-white rounded-4 shadow-sm border">
     <div class="container-fluid py-3">
@@ -15,6 +37,28 @@
         </p>
     </div>
 </div>
+
+@if (topCriticos.Any())
+{
+    <div class="row g-3 mb-3">
+        @foreach (var p in topCriticos)
+        {
+            <div class="col-md-4">
+                <div class="card card-alerta-critica rounded-4 h-100">
+                    <div class="card-body d-flex align-items-center gap-3">
+                        <i class="bi bi-exclamation-triangle-fill fs-2 text-danger"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">@p.ProductoNombre</h6>
+                            <p class="mb-0 small text-dark">
+                                Solo quedan <strong>@p.Unidades</strong> unidad@(p.Unidades == 1 ? "" : "es")
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
 
 <!-- KPIs -->
 <div class="row g-3 mb-3">
@@ -46,7 +90,7 @@
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
                 <h6 class="text-muted small">Ingresos hoy</h6>
-                <p class="h3 fw-bold mb-0">@Model.IngresosHoy.ToString("C")</p>
+                <p class="h3 fw-bold mb-0">L @Model.IngresosHoy.ToString("N2")</p>
             </div>
         </div>
     </div>
@@ -54,7 +98,7 @@
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
                 <h6 class="text-muted small">Ticket promedio</h6>
-                <p class="h3 fw-bold mb-0">@Model.TicketPromedio.ToString("C")</p>
+                <p class="h3 fw-bold mb-0">L @Model.TicketPromedio.ToString("N2")</p>
             </div>
         </div>
     </div>
@@ -70,40 +114,50 @@
     </div>
 </div>
 
-<!-- Fila 1 de gráficos -->
+<!-- Gráficos (1 por fila con altura controlada) -->
 <div class="row g-3 mb-3">
-    <div class="col-md-7">
+    <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white"><strong>Ingresos — últimos 7 días</strong></div>
-            <div class="card-body"><canvas id="chartIngresos" height="110"></canvas></div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="chartIngresos"></canvas>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col-md-5">
+
+    <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white"><strong>Productos más vendidos</strong></div>
-            <div class="card-body"><canvas id="chartTopProductos" height="110"></canvas></div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="chartTopProductos"></canvas>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Fila 2 de gráficos -->
-<div class="row g-3 mb-3">
-    <div class="col-md-4">
+    <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white"><strong>Ventas por categoría</strong></div>
-            <div class="card-body"><canvas id="chartVentasCategoria" height="180"></canvas></div>
+            <div class="card-body">
+                <!-- Se centra y limita el ancho de la dona para que no se deforme -->
+                <div class="chart-container mx-auto" style="max-width: 380px;">
+                    <canvas id="chartVentasCategoria"></canvas>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col-md-4">
+
+    <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white"><strong>Capital invertido por categoría</strong></div>
-            <div class="card-body"><canvas id="chartValorInventario" height="180"></canvas></div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white text-danger"><strong>Stock crítico</strong></div>
-            <div class="card-body"><canvas id="chartStockCritico" height="180"></canvas></div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="chartValorInventario"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -134,36 +188,36 @@
         </div>
     </div>
     <div class="col-md-6">
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white"><strong>Últimas ventas</strong></div>
-        <div class="card-body p-0">
-            @if (!Model.UltimasVentas.Any())
-            {
-                <p class="text-muted p-3 mb-0">Aún no hay ventas registradas.</p>
-            }
-            else
-            {
-                <table class="table mb-0">
-                    <thead><tr><th>Productos</th><th>Total</th></tr></thead>
-                    <tbody>
-                        @foreach (var v in Model.UltimasVentas)
-                        {
-                            <tr>
-                                <td>
-                                    @foreach (var d in v.Detalles)
-                                    {
-                                        <div>@d.Producto <span class="text-muted">x@d.Unidades</span></div>
-                                    }
-                                </td>
-                                <td>@v.TotalAPagar.ToString("C")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            }
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Últimas ventas</strong></div>
+            <div class="card-body p-0">
+                @if (!Model.UltimasVentas.Any())
+                {
+                    <p class="text-muted p-3 mb-0">Aún no hay ventas registradas.</p>
+                }
+                else
+                {
+                    <table class="table mb-0">
+                        <thead><tr><th>Productos</th><th>Total</th></tr></thead>
+                        <tbody>
+                            @foreach (var v in Model.UltimasVentas)
+                            {
+                                <tr>
+                                    <td>
+                                        @foreach (var d in v.Detalles)
+                                        {
+                                            <div>@d.Producto <span class="text-muted">x@(d.Unidades)</span></div>
+                                        }
+                                    </td>
+                                    <td>L @v.TotalAPagar.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
         </div>
     </div>
-</div>
 </div>
 
 @section Scripts {
@@ -177,37 +231,29 @@
         const ventasCategoriaMontos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.VentasCategoriaMontos));
         const valorInventarioLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ValorInventarioLabels));
         const valorInventarioMontos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ValorInventarioMontos));
-        const stockCriticoLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockCriticoLabels));
-        const stockCriticoUnidades = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockCriticoUnidades));
 
         new Chart(document.getElementById('chartIngresos'), {
             type: 'line',
             data: { labels: diasLabels, datasets: [{ label: 'Ingresos', data: ingresosPorDia, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.3, fill: true }] },
-            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
 
         new Chart(document.getElementById('chartTopProductos'), {
             type: 'bar',
             data: { labels: productosTopLabels, datasets: [{ label: 'Unidades vendidas', data: productosTopUnidades, backgroundColor: '#198754' }] },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
         });
 
         new Chart(document.getElementById('chartVentasCategoria'), {
             type: 'doughnut',
             data: { labels: ventasCategoriaLabels, datasets: [{ data: ventasCategoriaMontos, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6f42c1','#20c997'] }] },
-            options: { plugins: { legend: { position: 'bottom' } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
         });
 
         new Chart(document.getElementById('chartValorInventario'), {
             type: 'bar',
             data: { labels: valorInventarioLabels, datasets: [{ label: 'Valor invertido', data: valorInventarioMontos, backgroundColor: '#6f42c1' }] },
-            options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-        });
-
-        new Chart(document.getElementById('chartStockCritico'), {
-            type: 'bar',
-            data: { labels: stockCriticoLabels, datasets: [{ label: 'Unidades restantes', data: stockCriticoUnidades, backgroundColor: '#dc3545' }] },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });
     </script>
 }

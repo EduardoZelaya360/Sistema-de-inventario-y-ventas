@@ -109,7 +109,11 @@ namespace Sistema_de_inventario_y_ventas.Controllers
                 {
                     var producto = productosDb[i];
                     var subtotal = producto.PrecioUnitario * items[i].Unidades;
-                    totalGeneral += subtotal;
+                    var porcentaje = items[i].PorcentajeImpuesto;
+                    var impuesto = Math.Round(subtotal * (porcentaje / 100m), 2);
+                    var totalLinea = subtotal + impuesto;
+
+                    totalGeneral += totalLinea;
 
                     _context.DetalleVentas.Add(new DetalleVenta
                     {
@@ -117,7 +121,9 @@ namespace Sistema_de_inventario_y_ventas.Controllers
                         Producto = producto.ProductoNombre,
                         PrecioUnitario = producto.PrecioUnitario,
                         Unidades = items[i].Unidades,
-                        Subtotal = subtotal
+                        Subtotal = subtotal,
+                        PorcentajeImpuesto = porcentaje,
+                        Impuesto = impuesto
                     });
 
                     producto.Unidades -= items[i].Unidades;
@@ -151,6 +157,180 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             ViewBag.Usuarios = await _context.Usuarios
                 .OrderBy(u => u.Nombre)
                 .ToListAsync();
+        }
+
+        // GET: /Ventas/Edit/5
+        [HttpGet]
+        public async Task<IActionResult> Edit(int id)
+        {
+            var rol = HttpContext.Session.GetString("UsuarioRol");
+            if (string.IsNullOrEmpty(rol) || !rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "No tienes permisos para editar ventas.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var venta = await _context.Ventas
+                .Include(v => v.Detalles)
+                .FirstOrDefaultAsync(v => v.Id == id);
+
+            if (venta == null)
+            {
+                TempData["Error"] = "La venta no fue encontrada.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            ViewBag.Usuarios = await _context.Usuarios.ToListAsync();
+
+            return View(venta);
+        }
+
+        // POST: /Ventas/Edit/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Venta ventaForm)
+        {
+            var rol = HttpContext.Session.GetString("UsuarioRol");
+            if (string.IsNullOrEmpty(rol) || !rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "No tienes permisos para editar ventas.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var ventaDb = await _context.Ventas
+                .Include(v => v.Detalles)
+                .FirstOrDefaultAsync(v => v.Id == id);
+
+            if (ventaDb == null)
+            {
+                TempData["Error"] = "La venta no fue encontrada.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                decimal nuevoTotalGeneral = 0;
+
+                for (int i = 0; i < ventaDb.Detalles.Count; i++)
+                {
+                    var detalleDb = ventaDb.Detalles[i];
+                    var detalleForm = ventaForm.Detalles[i];
+
+                    int unidadesViejas = detalleDb.Unidades;
+                    int unidadesNuevas = detalleForm.Unidades;
+
+                    if (unidadesNuevas < 1)
+                    {
+                        TempData["Error"] = "Las unidades no pueden ser menores a 1.";
+                        return RedirectToAction(nameof(Index));
+                    }
+
+                    if (unidadesNuevas != unidadesViejas)
+                    {
+                        var producto = await _context.Inventario
+                            .FirstOrDefaultAsync(p => p.ProductoNombre == detalleDb.Producto);
+
+                        if (producto != null)
+                        {
+                            int diferencia = unidadesNuevas - unidadesViejas;
+
+                            if (diferencia > 0)
+                            {
+                                if (producto.Unidades < diferencia)
+                                {
+                                    TempData["Error"] = $"Stock insuficiente para {producto.ProductoNombre}. Disponible: {producto.Unidades}.";
+                                    return RedirectToAction(nameof(Index));
+                                }
+                                producto.Unidades -= diferencia;
+                            }
+                            else
+                            {
+                                producto.Unidades += Math.Abs(diferencia);
+                            }
+
+                            _context.Inventario.Update(producto);
+                        }
+                    }
+
+                    detalleDb.Unidades = unidadesNuevas;
+                    detalleDb.Subtotal = detalleDb.PrecioUnitario * unidadesNuevas;
+                    detalleDb.Impuesto = Math.Round(detalleDb.Subtotal * (detalleDb.PorcentajeImpuesto / 100m), 2);
+                    nuevoTotalGeneral += detalleDb.Subtotal + detalleDb.Impuesto;
+                }
+
+                ventaDb.Vendedor = ventaForm.Vendedor;
+                ventaDb.TotalAPagar = nuevoTotalGeneral;
+                ventaDb.Fecha = DateTime.UtcNow;
+
+                _context.Ventas.Update(ventaDb);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Mensaje"] = "Venta y stock actualizados correctamente.";
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                string mensajeReal = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                TempData["Error"] = "Error al actualizar la venta: " + mensajeReal;
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // POST: /Ventas/Delete/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var rol = HttpContext.Session.GetString("UsuarioRol");
+            if (string.IsNullOrEmpty(rol) || !rol.Equals("Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "No tienes permisos para eliminar ventas.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var venta = await _context.Ventas
+                .Include(v => v.Detalles)
+                .FirstOrDefaultAsync(v => v.Id == id);
+
+            if (venta == null)
+            {
+                TempData["Error"] = "La venta no existe.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                foreach (var detalle in venta.Detalles)
+                {
+                    var producto = await _context.Inventario
+                        .FirstOrDefaultAsync(p => p.ProductoNombre == detalle.Producto);
+
+                    if (producto != null)
+                    {
+                        producto.Unidades += detalle.Unidades;
+                        _context.Inventario.Update(producto);
+                    }
+                }
+
+                _context.DetalleVentas.RemoveRange(venta.Detalles);
+                _context.Ventas.Remove(venta);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["Mensaje"] = "Venta eliminada y stock restaurado correctamente.";
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = "Ocurrió un error al eliminar la venta.";
+            }
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }

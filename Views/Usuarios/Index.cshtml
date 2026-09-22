@@ -11,9 +11,13 @@
     </a>
 </div>
 
+<div class="mb-3">
+    <input type="text" id="inputBusquedaUsuarios" class="form-control" placeholder="Buscar por nombre, correo o rol...">
+</div>
+
 <div class="card shadow-sm border-0 rounded-4 p-3 bg-white">
     <div class="table-responsive">
-        <table class="table table-hover align-middle">
+        <table class="table table-hover align-middle" id="tablaUsuarios">
             <thead class="table-dark">
                 <tr>
                     <th>Nombre</th>
@@ -25,7 +29,7 @@
             <tbody>
                 @foreach (var item in Model)
                 {
-                    <tr>
+                    <tr data-nombre="@item.Nombre.ToLower()" data-email="@item.Email.ToLower()" data-rol="@item.Rol.ToLower()">
                         <td class="fw-semibold">@item.Nombre</td>
                         <td>@item.Email</td>
                         <td>
@@ -49,3 +53,23 @@
         </table>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        const inputBusquedaUsuarios = document.getElementById('inputBusquedaUsuarios');
+        const filasUsuarios = document.querySelectorAll('#tablaUsuarios tbody tr');
+
+        inputBusquedaUsuarios.addEventListener('input', () => {
+            const texto = inputBusquedaUsuarios.value.trim().toLowerCase();
+
+            filasUsuarios.forEach(fila => {
+                const nombre = fila.dataset.nombre || '';
+                const email = fila.dataset.email || '';
+                const rol = fila.dataset.rol || '';
+                const coincide = nombre.includes(texto) || email.includes(texto) || rol.includes(texto);
+
+                fila.classList.toggle('d-none', !coincide);
+            });
+        });
+    </script>
+}

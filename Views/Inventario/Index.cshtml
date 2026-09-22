@@ -45,41 +45,56 @@
 
 <div class="tab-content" id="inventarioTabsContent">
 
-    <!-- Tab 1: Lista (Agregamos 'show active' para que se muestre por defecto) -->
+    <!-- Tab 1: Lista -->
     <div class="tab-pane fade show active" id="tab-lista" role="tabpanel" aria-labelledby="tab-lista-btn">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Categoría</th>
-                    <th>Precio unitario</th>
-                    <th>Unidades</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var p in Model)
-                {
-                    <tr class="@(p.Unidades <= 5 ? "table-danger" : "")">
-                        <td>@p.ProductoNombre</td>
-                        <td>@p.NombreCategoria</td>
-                        <td>@p.PrecioUnitario.ToString("C")</td>
-                        <td>@p.Unidades</td>
-                        <td>
-                    
-                            @if (esAdmin)
-                            {
-                                <!-- Los botones Editar y Eliminar solo se muestran si es Administrador -->
-                                <button type="button" class="btn btn-sm btn-outline-primary btn-abrir-modal"
-                                        data-url="@Url.Action("EditModal", new { id = p.Id })">Editar</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-abrir-modal"
-                                        data-url="@Url.Action("DeleteModal", new { id = p.Id })">Eliminar</button>
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="mb-3">
+            <input type="text" id="inputBusquedaInventario" class="form-control" placeholder="Buscar por producto o categoría...">
+        </div>
+
+        <!-- Contenedor Card igual al de Usuarios -->
+        <div class="card shadow-sm border-0 rounded-4 p-3 bg-white">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="tablaInventario">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Precio unitario</th>
+                            <th>Unidades</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model)
+                        {
+                            <tr class="@(p.Unidades <= 5 ? "table-danger" : "")"
+                                data-producto="@p.ProductoNombre.ToLower()"
+                                data-categoria="@p.NombreCategoria.ToLower()">
+                                <td class="fw-semibold">@p.ProductoNombre</td>
+                                <td>@p.NombreCategoria</td>
+                                <td>@p.PrecioUnitario.ToString("C")</td>
+                                <td>@p.Unidades</td>
+                                <td class="text-end">
+                                    @if (esAdmin)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-warning btn-abrir-modal me-1"
+                                                title="Editar"
+                                                data-url="@Url.Action("EditModal", new { id = p.Id })">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-abrir-modal"
+                                                title="Eliminar"
+                                                data-url="@Url.Action("DeleteModal", new { id = p.Id })">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     @if (esAdmin)
@@ -186,5 +201,105 @@
                 }
             });
         }
+
+        const inputBusquedaInventario = document.getElementById('inputBusquedaInventario');
+        const filasInventario = document.querySelectorAll('#tablaInventario tbody tr');
+
+        inputBusquedaInventario.addEventListener('input', () => {
+            const texto = inputBusquedaInventario.value.trim().toLowerCase();
+
+            filasInventario.forEach(fila => {
+                const producto = fila.dataset.producto || '';
+                const categoria = fila.dataset.categoria || '';
+                const coincide = producto.includes(texto) || categoria.includes(texto);
+
+                fila.classList.toggle('d-none', !coincide);
+            });
+        });
+
+function validarCampoEdicion(input, condicion, mensaje) {
+    const valido = condicion(input.value);
+    const contenedor = input.closest('.mb-2');
+    const spanError = contenedor ? contenedor.querySelector('span.text-danger') : null;
+
+    input.classList.toggle('is-valid', valido);
+    input.classList.toggle('is-invalid', !valido);
+
+    if (spanError) {
+        spanError.textContent = valido ? '' : mensaje;
+    }
+    return valido;
+}
+
+document.addEventListener('input', function (e) {
+    if (e.target.id === 'editInputProducto') {
+        validarCampoEdicion(e.target, v => v.trim().length > 0, 'El nombre del producto es obligatorio.');
+    }
+    if (e.target.id === 'editInputPrecio') {
+        validarCampoEdicion(e.target, v => parseFloat(v) > 0, 'El precio debe ser mayor a 0.');
+    }
+    if (e.target.id === 'editInputUnidades') {
+        validarCampoEdicion(e.target, v => parseInt(v) > 0, 'Las unidades deben ser mayores a 0.');
+    }
+});
+
+document.addEventListener('change', function (e) {
+    if (e.target.id === 'editSelectCategoria') {
+        validarCampoEdicion(e.target, v => v.trim().length > 0, 'Selecciona una categoría.');
+    }
+});
+
+function validarFormularioEdicionCompleto(form) {
+    const nombre = form.querySelector('#editInputProducto');
+    const categoria = form.querySelector('#editSelectCategoria');
+    const precio = form.querySelector('#editInputPrecio');
+    const unidades = form.querySelector('#editInputUnidades');
+
+    const okNombre = validarCampoEdicion(nombre, v => v.trim().length > 0, 'El nombre del producto es obligatorio.');
+    const okCategoria = validarCampoEdicion(categoria, v => v.trim().length > 0, 'Selecciona una categoría.');
+    const okPrecio = validarCampoEdicion(precio, v => parseFloat(v) > 0, 'El precio debe ser mayor a 0.');
+    const okUnidades = validarCampoEdicion(unidades, v => parseInt(v) > 0, 'Las unidades deben ser mayores a 0.');
+
+    return okNombre && okCategoria && okPrecio && okUnidades;
+}
+
+document.addEventListener('submit', async function (e) {
+    if (e.target.id !== 'formEditarProducto') return;
+    e.preventDefault();
+
+    const form = e.target;
+
+    // Validación en el navegador: si falla, ni siquiera se manda al servidor
+    if (!validarFormularioEdicionCompleto(form)) return;
+
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data.success) {
+                window.location.href = data.redirectUrl;
+                return;
+            }
+        }
+
+        // Si no fue JSON de éxito, es el HTML del modal con errores de validación del servidor
+        const html = await response.text();
+        modalProductoContenido.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error al guardar la edición:', error);
+    }
+});
+
     </script>
+ 
 }

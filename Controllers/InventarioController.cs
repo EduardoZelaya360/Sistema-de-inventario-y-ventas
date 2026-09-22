@@ -119,46 +119,46 @@ namespace Sistema_de_inventario_y_ventas.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        public async Task<IActionResult> Edit(int id)
-        {
-            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
 
-            var producto = await _context.Inventario.FindAsync(id);
-            if (producto == null) return NotFound();
+       
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(int id, Producto producto)
+{
+    if (!EsAdministrador()) return RedirectToAction(nameof(Index));
+    if (id != producto.Id) return NotFound();
 
-            ViewBag.Categorias = await _context.Categorias.OrderBy(c => c.NombreCategoria).ToListAsync();
-            return View(producto);
-        }
+    bool esAjax = Request.Headers["X-Requested-With"] == "XMLHttpRequest";
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Producto producto)
-        {
-            if (!EsAdministrador()) return RedirectToAction(nameof(Index));
-            if (id != producto.Id) return NotFound();
+    if (!ModelState.IsValid)
+    {
+        ViewBag.Categorias = await _context.Categorias.OrderBy(c => c.NombreCategoria).ToListAsync();
+        return PartialView("_EditModal", producto);
+    }
 
-            if (!ModelState.IsValid)
-            {
-                ViewBag.Categorias = await _context.Categorias.OrderBy(c => c.NombreCategoria).ToListAsync();
-                return View(producto);
-            }
+    try
+    {
+        _context.Update(producto);
+        await _context.SaveChangesAsync();
+    }
+    catch (DbUpdateConcurrencyException)
+    {
+        if (!await _context.Inventario.AnyAsync(p => p.Id == id))
+            return NotFound();
+        throw;
+    }
 
-            try
-            {
-                _context.Update(producto);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await _context.Inventario.AnyAsync(p => p.Id == id))
-                    return NotFound();
-                throw;
-            }
+    TempData["Mensaje"] = "Producto actualizado correctamente.";
+    TempData["TabActivo"] = "lista";
 
-            TempData["Mensaje"] = "Producto actualizado correctamente.";
-            TempData["TabActivo"] = "lista";
-            return RedirectToAction(nameof(Index));
-        }
+    if (esAjax)
+    {
+        return Json(new { success = true, redirectUrl = Url.Action(nameof(Index)) });
+    }
+
+    return RedirectToAction(nameof(Index));
+}
+
 
         public async Task<IActionResult> Delete(int id)
         {

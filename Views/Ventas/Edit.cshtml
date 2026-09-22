@@ -1,0 +1,134 @@
+@model Sistema_de_inventario_y_ventas.Models.Venta
+
+@{
+    ViewData["Title"] = "Editar Venta";
+}
+
+<h2>Editar Venta</h2>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <p class="mb-0">@error.ErrorMessage</p>
+        }
+    </div>
+}
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div class="mb-3">
+        <label class="form-label">Vendedor</label>
+        <select asp-for="Vendedor" class="form-select">
+            <option value="">-- Selecciona un vendedor --</option>
+            @foreach (var u in (List<Sistema_de_inventario_y_ventas.Models.Usuario>)ViewBag.Usuarios)
+            {
+                <option value="@u.Nombre">@u.Nombre</option>
+            }
+        </select>
+        <span asp-validation-for="Vendedor" class="text-danger"></span>
+    </div>
+
+    <h4 class="mt-4 mb-3">Detalles de la venta</h4>
+
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Unidades</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Detalles.Count; i++)
+            {
+                <tr>
+                    <td>
+                        @Model.Detalles[i].Producto
+                        <input type="hidden" asp-for="Detalles[i].Id" />
+                        <input type="hidden" asp-for="Detalles[i].VentaId" />
+                        <input type="hidden" asp-for="Detalles[i].Producto" />
+                        <input type="hidden" asp-for="Detalles[i].PrecioUnitario" />
+                        <input type="hidden" asp-for="Detalles[i].Subtotal" />
+                    </td>
+                    <td>
+                        <input asp-for="Detalles[i].Unidades" class="form-control" type="number" min="1" />
+                        <span asp-validation-for="Detalles[i].Unidades" class="text-danger"></span>
+                    </td>
+                    <td>@Model.Detalles[i].PrecioUnitario.ToString("C")</td>
+                    <td>@Model.Detalles[i].Subtotal.ToString("C")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+    </div>
+</form>
+@section Scripts {
+    <script>
+        // =====================================================================
+        // Validación en tiempo real: Vendedor 
+        // =====================================================================
+        const selectVendedor = document.getElementById('Vendedor');
+
+        function validarVendedor() {
+            const valido = selectVendedor.value.trim().length > 0;
+            selectVendedor.classList.toggle('is-invalid', !valido);
+            selectVendedor.classList.toggle('is-valid', valido);
+
+            const spanError = selectVendedor.closest('.mb-3').querySelector('span.text-danger');
+            if (spanError) {
+                spanError.textContent = valido ? '' : 'Debes seleccionar un vendedor.';
+            }
+            return valido;
+        }
+
+        selectVendedor.addEventListener('change', validarVendedor);
+
+        // =====================================================================
+        // Validación en tiempo real: Unidades 
+        // =====================================================================
+        const inputsUnidades = document.querySelectorAll('input[id$="_Unidades"]');
+
+        function validarUnidades(input) {
+            const valor = parseInt(input.value);
+            const valido = input.value.trim() !== '' && valor >= 1;
+
+            input.classList.toggle('is-invalid', !valido);
+            input.classList.toggle('is-valid', valido);
+
+            const fila = input.closest('tr');
+            const spanError = fila ? fila.querySelector('span.text-danger') : null;
+            if (spanError) {
+                spanError.textContent = valido ? '' : 'Las unidades no pueden ser 0 ni estar vacías.';
+            }
+            return valido;
+        }
+
+        inputsUnidades.forEach(input => {
+            input.addEventListener('input', () => validarUnidades(input));
+        });
+
+        // =====================================================================
+        // Bloquear el envío si algo sigue inválido
+        // =====================================================================
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const vendedorOk = validarVendedor();
+
+            let unidadesOk = true;
+            inputsUnidades.forEach(input => {
+                if (!validarUnidades(input)) unidadesOk = false;
+            });
+
+            if (!vendedorOk || !unidadesOk) {
+                e.preventDefault();
+            }
+        });
+    </script>
+}

@@ -30,6 +30,14 @@ namespace Sistema_de_inventario_y_ventas.Models
         [Column("subtotal")]
         public decimal Subtotal { get; set; }
 
+        [Required]
+        [Column("porcentaje_impuesto")]
+        public decimal PorcentajeImpuesto { get; set; } = 15;
+
+        [Required]
+        [Column("impuesto")]
+        public decimal Impuesto { get; set; }
+
         [ForeignKey(nameof(VentaId))]
         public Venta? Venta { get; set; }
     }

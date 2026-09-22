@@ -46,39 +46,55 @@
                     <h4 class="fw-bold mb-3 text-dark">Nueva Transacción</h4>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-5">
                             <label class="form-label fw-semibold">Producto</label>
                             <select id="selectProducto" class="form-select">
                                 @foreach (var p in (List<Sistema_de_inventario_y_ventas.Models.Producto>)ViewBag.Productos)
                                 {
                                     <option value="@p.Id" data-nombre="@p.ProductoNombre" data-precio="@p.PrecioUnitario" data-stock="@p.Unidades">
-                                        @p.ProductoNombre (@p.Unidades disponibles - @p.PrecioUnitario.ToString("C"))
+                                        @p.ProductoNombre (@p.Unidades disponibles - L @p.PrecioUnitario.ToString("N2"))
                                     </option>
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label fw-semibold">Cantidad</label>
                             <input id="inputCantidad" class="form-control" type="number" min="1" value="1" />
                         </div>
-                        <div class="col-md-3 d-flex align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Impuesto</label>
+                            <select id="selectImpuesto" class="form-select">
+                                <option value="0">Exento (0%)</option>
+                                <option value="15" selected>ISV General (15%)</option>
+                                <option value="18">ISV Bienes específicos (18%)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
                             <button type="button" id="btnAgregarItem" class="btn btn-outline-primary w-100">
-                                <i class="bi bi-plus-lg"></i> Agregar al carrito
+                                <i class="bi bi-plus-lg"></i> Agregar
                             </button>
                         </div>
                     </div>
 
                     <table class="table table-sm">
                         <thead>
-                            <tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th></tr>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio</th>
+                                <th>Subtotal</th>
+                                <th>Impuesto</th>
+                                <th>Total</th>
+                                <th></th>
+                            </tr>
                         </thead>
                         <tbody id="tablaCarrito">
-                            <tr id="filaVacia"><td colspan="5" class="text-center text-muted">El carrito está vacío</td></tr>
+                            <tr id="filaVacia"><td colspan="7" class="text-center text-muted">El carrito está vacío</td></tr>
                         </tbody>
                         <tfoot>
                             <tr class="fw-bold">
-                                <td colspan="3" class="text-end">Total</td>
-                                <td id="totalCarrito">$0.00</td>
+                                <td colspan="5" class="text-end">Total general</td>
+                                <td id="totalCarrito">L 0.00</td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -126,13 +142,18 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+
+                <div class="mb-3">
+                    <input type="text" id="inputBusquedaVentas" class="form-control" placeholder="Buscar por vendedor, fecha o producto...">
+                </div>
+
+                <table class="table table-hover align-middle" id="tablaVentas">
                     <thead class="table-dark">
                         <tr>
                             <th>Fecha</th>
                             <th>Total</th>
                             <th>Vendedor</th>
-                            <th>Acciones</th> <!-- Cambiado para el botón del modal -->
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -146,36 +167,45 @@
                         {
                             @foreach (var v in Model)
                             {
-                                // SOLUCIÓN AL CRASHEO: Creamos un objeto limpio sin referencias circulares a la base de datos
                                 var detallesLimpios = v.Detalles.Select(d => new {
                                     producto = d.Producto,
                                     unidades = d.Unidades,
                                     precioUnitario = d.PrecioUnitario,
-                                    subtotal = d.Subtotal
+                                    subtotal = d.Subtotal,
+                                    porcentajeImpuesto = d.PorcentajeImpuesto,
+                                    impuesto = d.Impuesto
                                 });
-                                
-                                // Razor escapará automáticamente las comillas de este JSON
-                                var jsonDetalles = System.Text.Json.JsonSerializer.Serialize(detallesLimpios);
 
-                                <tr>
+                                var jsonDetalles = System.Text.Json.JsonSerializer.Serialize(detallesLimpios);
+                                var productosTexto = string.Join(" ", v.Detalles.Select(d => d.Producto)).ToLower();
+
+                                <tr data-vendedor="@v.Vendedor.ToLower()"
+                                    data-fecha="@v.Fecha.ToLocalTime().ToString("dd/MM/yyyy")"
+                                    data-productos="@productosTexto">
                                     <td>@v.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
-                                    <td class="fw-bold text-success">@v.TotalAPagar.ToString("C")</td>
+                                    <td class="fw-bold text-success">L @v.TotalAPagar.ToString("N2")</td>
                                     <td>
                                         <span class="badge bg-info text-dark">
                                             <i class="bi bi-person me-1"></i> @v.Vendedor
                                         </span>
                                     </td>
                                     <td>
-                                        <!-- Botón que abre el modal -->
-                                        <button type="button" class="btn btn-sm btn-outline-info" 
-                                                data-bs-toggle="modal" 
+                                        <button type="button" class="btn btn-sm btn-outline-info"
+                                                data-bs-toggle="modal"
                                                 data-bs-target="#modalDetalleVenta"
                                                 data-fecha="@v.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")"
                                                 data-vendedor="@v.Vendedor"
-                                                data-total="@v.TotalAPagar.ToString("C")"
+                                                data-total="@v.TotalAPagar.ToString("N2")"
                                                 data-detalles="@jsonDetalles">
                                             <i class="bi bi-eye"></i> Ver Detalles
                                         </button>
+                                        @if (Context.Session.GetString("UsuarioRol") == "Administrador")
+                                        {
+                                            <a asp-action="Edit" asp-route-id="@v.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+                                            <form asp-action="Delete" asp-route-id="@v.Id" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar esta venta?');">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                            </form>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -206,7 +236,7 @@
                         <strong id="mVendedor"></strong>
                     </div>
                     <div class="col-md-4 text-end">
-                        <span class="text-muted small d-block">Total Pagado</span>
+                        <span class="text-muted small d-block">Total</span>
                         <strong id="mTotal" class="text-success fs-5"></strong>
                     </div>
                 </div>
@@ -218,6 +248,7 @@
                             <th class="text-center">Cant.</th>
                             <th class="text-end">Precio Unit.</th>
                             <th class="text-end">Subtotal</th>
+                            <th class="text-end">Impuesto</th>
                         </tr>
                     </thead>
                     <tbody id="mTablaDetalles">
@@ -241,11 +272,17 @@
 
         const selectProducto = document.getElementById('selectProducto');
         const inputCantidad = document.getElementById('inputCantidad');
+        const selectImpuesto = document.getElementById('selectImpuesto');
         const tablaCarrito = document.getElementById('tablaCarrito');
         const filaVacia = document.getElementById('filaVacia');
         const totalCarrito = document.getElementById('totalCarrito');
         const itemsJson = document.getElementById('itemsJson');
         const btnRegistrarVenta = document.getElementById('btnRegistrarVenta');
+
+        function etiquetaImpuesto(porcentaje) {
+            if (porcentaje === 0) return 'Exento';
+            return porcentaje + '%';
+        }
 
         function renderCarrito() {
             tablaCarrito.innerHTML = '';
@@ -256,24 +293,35 @@
             } else {
                 btnRegistrarVenta.disabled = false;
                 carrito.forEach((item, index) => {
+                    const subtotal = item.precio * item.cantidad;
+                    const impuesto = subtotal * (item.porcentajeImpuesto / 100);
+                    const totalLinea = subtotal + impuesto;
+
                     const fila = document.createElement('tr');
                     fila.innerHTML = `
                         <td>${item.nombre}</td>
                         <td>${item.cantidad}</td>
-                        <td>$${item.precio.toFixed(2)}</td>
-                        <td>$${(item.precio * item.cantidad).toFixed(2)}</td>
+                        <td>L ${item.precio.toFixed(2)}</td>
+                        <td>L ${subtotal.toFixed(2)}</td>
+                        <td>L ${impuesto.toFixed(2)} <span class="text-muted small">(${etiquetaImpuesto(item.porcentajeImpuesto)})</span></td>
+                        <td>L ${totalLinea.toFixed(2)}</td>
                         <td><button type="button" class="btn btn-sm btn-outline-danger btn-quitar" data-index="${index}"><i class="bi bi-trash"></i></button></td>
                     `;
                     tablaCarrito.appendChild(fila);
                 });
             }
 
-            const total = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-            totalCarrito.textContent = '$' + total.toFixed(2);
+            const total = carrito.reduce((acc, item) => {
+                const subtotal = item.precio * item.cantidad;
+                return acc + subtotal + (subtotal * (item.porcentajeImpuesto / 100));
+            }, 0);
+
+            totalCarrito.textContent = 'L ' + total.toFixed(2);
 
             itemsJson.value = JSON.stringify(carrito.map(item => ({
                 ProductoId: item.productoId,
-                Unidades: item.cantidad
+                Unidades: item.cantidad,
+                PorcentajeImpuesto: item.porcentajeImpuesto
             })));
         }
 
@@ -284,10 +332,11 @@
             const precio = parseFloat(opcion.dataset.precio);
             const stockDisponible = parseInt(opcion.dataset.stock);
             const cantidad = parseInt(inputCantidad.value);
+            const porcentajeImpuesto = parseFloat(selectImpuesto.value);
 
             if (!cantidad || cantidad < 1) return;
 
-            const existente = carrito.find(item => item.productoId === productoId);
+            const existente = carrito.find(item => item.productoId === productoId && item.porcentajeImpuesto === porcentajeImpuesto);
             const cantidadAcumulada = (existente ? existente.cantidad : 0) + cantidad;
 
             if (cantidadAcumulada > stockDisponible) {
@@ -298,7 +347,7 @@
             if (existente) {
                 existente.cantidad = cantidadAcumulada;
             } else {
-                carrito.push({ productoId, nombre, precio, cantidad });
+                carrito.push({ productoId, nombre, precio, cantidad, porcentajeImpuesto });
             }
 
             inputCantidad.value = 1;
@@ -315,40 +364,58 @@
         renderCarrito();
 
         // ----------------------------------------------------
+        // BUSCADOR DEL HISTORIAL (PESTAÑA 2)
+        // ----------------------------------------------------
+        const inputBusquedaVentas = document.getElementById('inputBusquedaVentas');
+        if (inputBusquedaVentas) {
+            const filasVentas = document.querySelectorAll('#tablaVentas tbody tr');
+
+            inputBusquedaVentas.addEventListener('input', () => {
+                const texto = inputBusquedaVentas.value.trim().toLowerCase();
+
+                filasVentas.forEach(fila => {
+                    const vendedor = fila.dataset.vendedor || '';
+                    const fecha = fila.dataset.fecha || '';
+                    const productos = fila.dataset.productos || '';
+                    const coincide = vendedor.includes(texto) || fecha.includes(texto) || productos.includes(texto);
+
+                    fila.classList.toggle('d-none', !coincide);
+                });
+            });
+        }
+
+        // ----------------------------------------------------
         // LÓGICA DEL MODAL DE DETALLES (PESTAÑA 2)
         // ----------------------------------------------------
         const modalDetalleVenta = document.getElementById('modalDetalleVenta');
-        
+
         if (modalDetalleVenta) {
             modalDetalleVenta.addEventListener('show.bs.modal', event => {
-                // Obtenemos el botón que fue clickeado
                 const button = event.relatedTarget;
-                
-                // Extraemos la información de los atributos 'data-'
+
                 const fecha = button.getAttribute('data-fecha');
                 const vendedor = button.getAttribute('data-vendedor');
                 const total = button.getAttribute('data-total');
                 const detallesRaw = button.getAttribute('data-detalles');
-                
-                // Parseamos el JSON que creamos limpio en C#
+
                 const detalles = JSON.parse(detallesRaw);
 
-                // Llenamos la información general en el modal
                 document.getElementById('mFecha').textContent = fecha;
                 document.getElementById('mVendedor').textContent = vendedor;
-                document.getElementById('mTotal').textContent = total;
+                document.getElementById('mTotal').textContent = 'L ' + total;
 
-                // Llenamos la tabla de detalles en el modal
                 const tbody = document.getElementById('mTablaDetalles');
-                tbody.innerHTML = ''; // Limpiar filas anteriores
+                tbody.innerHTML = '';
 
                 detalles.forEach(d => {
                     const tr = document.createElement('tr');
+                    const etiqueta = d.porcentajeImpuesto === 0 ? 'Exento' : d.porcentajeImpuesto + '%';
                     tr.innerHTML = `
                         <td>${d.producto}</td>
                         <td class="text-center">${d.unidades}</td>
-                        <td class="text-end">$${d.precioUnitario.toFixed(2)}</td>
-                        <td class="text-end fw-bold">$${d.subtotal.toFixed(2)}</td>
+                        <td class="text-end">L ${d.precioUnitario.toFixed(2)}</td>
+                        <td class="text-end">L ${d.subtotal.toFixed(2)}</td>
+                        <td class="text-end">L ${d.impuesto.toFixed(2)} <span class="text-muted small">(${etiqueta})</span></td>
                     `;
                     tbody.appendChild(tr);
                 });

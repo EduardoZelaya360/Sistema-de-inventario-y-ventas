@@ -1,16 +1,17 @@
+
 @model Sistema_de_inventario_y_ventas.Models.Producto
 
-<form asp-action="Create" method="post" id="formProducto">
+<form asp-action="Create" method="post" id="formProducto" novalidate>
     <div class="mb-3">
         <label class="form-label">Producto</label>
-        <input asp-for="ProductoNombre" id="inputProducto" class="form-control" list="listaProductos" autocomplete="off" />
+        <input asp-for="ProductoNombre" id="inputProducto" class="form-control" list="listaProductos" autocomplete="off" required />
         <datalist id="listaProductos">
             @foreach (var nombre in (List<string>)ViewBag.ProductosExistentes)
             {
                 <option value="@nombre"></option>
             }
         </datalist>
-        <span asp-validation-for="ProductoNombre" class="text-danger"></span>
+        <div class="invalid-feedback">Por favor ingresa el nombre del producto.</div>
         <div id="alertaDuplicado" class="alert alert-warning mt-2 py-2 d-none">
             Ya existe un producto con ese nombre. Revisa la lista de inventario en vez de crear uno nuevo.
         </div>
@@ -18,31 +19,31 @@
 
     <div class="mb-3">
         <label class="form-label">Categoría</label>
-        <select asp-for="NombreCategoria" class="form-select">
+        <select asp-for="NombreCategoria" id="selectCategoria" class="form-select" required>
             <option value="">-- Selecciona --</option>
             @foreach (var c in (List<Sistema_de_inventario_y_ventas.Models.Categoria>)ViewBag.Categorias)
             {
                 <option value="@c.NombreCategoria">@c.NombreCategoria</option>
             }
         </select>
-        <span asp-validation-for="NombreCategoria" class="text-danger"></span>
+        <div class="invalid-feedback">Debes seleccionar una categoría obligatoriamente.</div>
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Descripción</label>
+        <label class="form-label">Descripción <span class="text-muted small">(Opcional)</span></label>
         <textarea asp-for="Descripcion" class="form-control"></textarea>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Precio unitario</label>
-        <input asp-for="PrecioUnitario" class="form-control" type="number" step="0.01" />
-        <span asp-validation-for="PrecioUnitario" class="text-danger"></span>
+        <input asp-for="PrecioUnitario" id="inputPrecio" class="form-control" type="number" step="0.01" min="0.01" required />
+        <div class="invalid-feedback">El precio unitario debe ser mayor a 0.</div>
     </div>
 
     <div class="mb-3">
         <label class="form-label">Unidades</label>
-        <input asp-for="Unidades" class="form-control" type="number" />
-        <span asp-validation-for="Unidades" class="text-danger"></span>
+        <input asp-for="Unidades" id="inputUnidades" class="form-control" type="number" min="1" required />
+        <div class="invalid-feedback">Las unidades deben ser mayores a 0.</div>
     </div>
 
     <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
@@ -55,24 +56,59 @@
         ));
 
         const inputProducto = document.getElementById('inputProducto');
+        const selectCategoria = document.getElementById('selectCategoria');
+        const inputPrecio = document.getElementById('inputPrecio');
+        const inputUnidades = document.getElementById('inputUnidades');
+        
         const alertaDuplicado = document.getElementById('alertaDuplicado');
         const btnGuardar = document.getElementById('btnGuardar');
+        const formProducto = document.getElementById('formProducto');
 
-        function validarDuplicado() {
-            const valor = inputProducto.value.trim().toLowerCase();
-            const existe = valor !== '' && productosExistentes.includes(valor);
-
-            alertaDuplicado.classList.toggle('d-none', !existe);
-            inputProducto.classList.toggle('is-invalid', existe);
-            btnGuardar.disabled = existe;
+        function validarCampo(input, condicionValida) {
+            if (condicionValida) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                return true;
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                return false;
+            }
         }
 
-        inputProducto.addEventListener('input', validarDuplicado);
+        function validarFormularioCompleto() {
+            // 1. Validar nombre y duplicado (No vacío y no repetido)
+            const valProducto = inputProducto.value.trim().toLowerCase();
+            const esDuplicado = valProducto !== '' && productosExistentes.includes(valProducto);
+            alertaDuplicado.classList.toggle('d-none', !esDuplicado);
+            
+            const productoValido = validarCampo(inputProducto, valProducto !== '' && !esDuplicado);
 
-        document.getElementById('formProducto').addEventListener('submit', function (e) {
-            validarDuplicado();
-            if (!alertaDuplicado.classList.contains('d-none')) {
+            // 2. Validar categoría (Obligatoria, no vacía)
+            const categoriaValida = validarCampo(selectCategoria, selectCategoria.value !== '');
+
+            // 3. Validar precio (Estrictamente mayor a 0)
+            const precioValido = validarCampo(inputPrecio, inputPrecio.value !== '' && parseFloat(inputPrecio.value) > 0);
+
+            // 4. Validar unidades (Estrictamente mayor a 0)
+            const unidadesValidas = validarCampo(inputUnidades, inputUnidades.value !== '' && parseInt(inputUnidades.value) > 0);
+
+            const todoValido = productoValido && categoriaValida && precioValido && unidadesValidas && !esDuplicado;
+            btnGuardar.disabled = esDuplicado;
+
+            return todoValido;
+        }
+
+        // Eventos dinámicos en tiempo real (Rojo / Verde instantáneo al escribir o corregir)
+        [inputProducto, selectCategoria, inputPrecio, inputUnidades].forEach(element => {
+            element.addEventListener('input', validarFormularioCompleto);
+            element.addEventListener('change', validarFormularioCompleto);
+        });
+
+        formProducto.addEventListener('submit', function (e) {
+            if (!validarFormularioCompleto()) {
                 e.preventDefault();
+                e.stopPropagation();
             }
         });
     })();

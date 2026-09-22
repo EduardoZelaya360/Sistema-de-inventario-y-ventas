@@ -13,22 +13,34 @@
                 <p class="text-muted small">Ingresa tus datos para acceder al sistema</p>
             </div>
 
-            <form asp-controller="Auth" asp-action="Login" method="post">
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show py-2 small" role="alert">
+                    <i class="bi bi-exclamation-triangle me-1"></i> @TempData["Error"]
+                    <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <form asp-controller="Auth" asp-action="Login" method="post" id="formLogin" novalidate>
                 <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
                 <div class="form-floating mb-3">
-                    <input type="email" name="email" class="form-control rounded-3" id="floatingEmail"  required />
+                    <input type="email" name="email" class="form-control rounded-3" id="floatingEmail" placeholder="correo@ejemplo.com" required />
                     <label for="floatingEmail">Correo electrónico</label>
+                    <div class="invalid-feedback">Por favor ingresa un correo electrónico válido.</div>
                 </div>
 
-                <div class="input-group mb-3">
-                    <div class="form-floating flex-grow-1">
-                        <input type="password" name="contrasena" class="form-control" id="floatingPassword" required style="border-top-left-radius: 0.375rem; border-bottom-left-radius: 0.375rem;" />
-                        <label for="floatingPassword">Contraseña</label>
+                <div class="mb-3">
+                    <div class="input-group">
+                        <div class="form-floating flex-grow-1">
+                            <input type="password" name="contrasena" class="form-control" id="floatingPassword" placeholder="Contraseña" required style="border-top-left-radius: 0.375rem; border-bottom-left-radius: 0.375rem;" />
+                            <label for="floatingPassword">Contraseña</label>
+                        </div>
+                        <button class="btn btn-outline-secondary px-3" type="button" id="btnTogglePassword" style="border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;" title="Mostrar/Ocultar contraseña">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
                     </div>
-                    <button class="btn btn-outline-secondary px-3" type="button" id="btnTogglePassword" style="border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem;" title="Mostrar/Ocultar contraseña">
-                        <i class="bi bi-eye" id="eyeIcon"></i>
-                    </button>
+                    <div class="invalid-feedback d-block text-danger small mt-1" id="errorPassword" style="display: none !important;">Por favor ingresa tu contraseña.</div>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100 py-2 rounded-pill fw-semibold shadow-sm mb-3">
@@ -38,8 +50,10 @@
         </div>
     </div>
 </div>
+
 @section Scripts {
     <script>
+        // Lógica para mostrar/ocultar contraseña
         document.getElementById('btnTogglePassword').addEventListener('click', function () {
             const passwordInput = document.getElementById('floatingPassword');
             const eyeIcon = document.getElementById('eyeIcon');
@@ -52,6 +66,59 @@
                 passwordInput.type = 'password';
                 eyeIcon.classList.remove('bi-eye-slash');
                 eyeIcon.classList.add('bi-eye');
+            }
+        });
+
+        const emailInput = document.getElementById('floatingEmail');
+        const passwordInput = document.getElementById('floatingPassword');
+        const formLogin = document.getElementById('formLogin');
+        const errorPassword = document.getElementById('errorPassword');
+
+        // Validación en tiempo real mientras el usuario escribe para cambiar a verde o rojo
+        emailInput.addEventListener('input', function() {
+            if (emailInput.value.trim() !== '') {
+                emailInput.classList.remove('is-invalid');
+                emailInput.classList.add('is-valid');
+            } else {
+                emailInput.classList.remove('is-valid');
+            }
+        });
+
+        passwordInput.addEventListener('input', function() {
+            if (passwordInput.value.trim() !== '') {
+                passwordInput.classList.remove('is-invalid');
+                passwordInput.classList.add('is-valid');
+                errorPassword.style.display = 'none';
+            } else {
+                passwordInput.classList.remove('is-valid');
+            }
+        });
+
+        // Validación al intentar enviar el formulario
+        formLogin.addEventListener('submit', function (event) {
+            let isValid = true;
+
+            if (!emailInput.value.trim()) {
+                emailInput.classList.add('is-invalid');
+                emailInput.classList.remove('is-valid');
+                isValid = false;
+            } else {
+                emailInput.classList.add('is-valid');
+            }
+
+            if (!passwordInput.value.trim()) {
+                passwordInput.classList.add('is-invalid');
+                passwordInput.classList.remove('is-valid');
+                errorPassword.style.display = 'block';
+                isValid = false;
+            } else {
+                passwordInput.classList.add('is-valid');
+                errorPassword.style.display = 'none';
+            }
+
+            if (!isValid) {
+                event.preventDefault();
+                event.stopPropagation();
             }
         });
     </script>

@@ -2,53 +2,58 @@
 
 <div class="modal-header py-2">
     <h5 class="modal-title fs-6"><i class="bi bi-pencil-square me-2"></i>Editar producto</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
-    <!-- max-height y overflow-auto aseguran que haya scroll interno si es muy alto -->
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" id="formEditarProducto" novalidate>
     <div class="modal-body py-2" style="max-height: 65vh; overflow-y: auto;">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
         <input type="hidden" asp-for="Id" />
 
         <div class="mb-2">
-            <label class="form-label small mb-1">Producto</label>
-            <input asp-for="ProductoNombre" class="form-control form-control-sm" />
+            <label class="form-label small mb-1 fw-bold">Producto</label>
+            <input asp-for="ProductoNombre" id="editInputProducto" class="form-control form-control-sm" required autocomplete="off" />
             <span asp-validation-for="ProductoNombre" class="text-danger small"></span>
         </div>
 
         <div class="mb-2">
-            <label class="form-label small mb-1">Categoría</label>
-            <select asp-for="NombreCategoria" class="form-select form-select-sm">
-                @foreach (var c in (List<Sistema_de_inventario_y_ventas.Models.Categoria>)ViewBag.Categorias)
+            <label class="form-label small mb-1 fw-bold">Categoría</label>
+            <select asp-for="NombreCategoria" id="editSelectCategoria" class="form-select form-select-sm" required>
+                <option value="">-- Selecciona --</option>
+                @if (ViewBag.Categorias != null)
                 {
-                    <option value="@c.NombreCategoria" selected="@(c.NombreCategoria == Model.NombreCategoria)">
-                        @c.NombreCategoria
-                    </option>
+                    @foreach (var c in (List<Sistema_de_inventario_y_ventas.Models.Categoria>)ViewBag.Categorias)
+                    {
+                        <option value="@c.NombreCategoria" selected="@(c.NombreCategoria == Model.NombreCategoria)">
+                            @c.NombreCategoria
+                        </option>
+                    }
                 }
             </select>
             <span asp-validation-for="NombreCategoria" class="text-danger small"></span>
         </div>
 
         <div class="mb-2">
-            <label class="form-label small mb-1">Descripción</label>
+            <label class="form-label small mb-1 fw-bold">Descripción <span class="text-muted fw-normal">(Opcional)</span></label>
             <textarea asp-for="Descripcion" class="form-control form-control-sm" rows="2"></textarea>
+            <span asp-validation-for="Descripcion" class="text-danger small"></span>
         </div>
 
         <div class="mb-2">
-            <label class="form-label small mb-1">Precio unitario</label>
-            <input asp-for="PrecioUnitario" class="form-control form-control-sm" type="number" step="0.01" />
+            <label class="form-label small mb-1 fw-bold">Precio unitario</label>
+            <input asp-for="PrecioUnitario" id="editInputPrecio" class="form-control form-control-sm" type="number" step="0.01" min="0.01" required />
             <span asp-validation-for="PrecioUnitario" class="text-danger small"></span>
         </div>
 
         <div class="mb-2">
-            <label class="form-label small mb-1">Unidades</label>
-            <input asp-for="Unidades" class="form-control form-control-sm" type="number" />
+            <label class="form-label small mb-1 fw-bold">Unidades</label>
+            <input asp-for="Unidades" id="editInputUnidades" class="form-control form-control-sm" type="number" min="1" required />
             <span asp-validation-for="Unidades" class="text-danger small"></span>
         </div>
     </div>
 
     <div class="modal-footer py-2">
         <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn btn-sm btn-primary">Guardar cambios</button>
+        <button type="submit" class="btn btn-sm btn-primary" id="btnGuardarEdicion">Guardar cambios</button>
     </div>
 </form>

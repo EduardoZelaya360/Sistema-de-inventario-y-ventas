@@ -26,43 +26,56 @@
                 <div class="mb-3">
                     <label asp-for="Contrasena" class="form-label fw-semibold">Contraseña</label>
                     <div class="input-group">
-                        <input asp-for="Contrasena" type="password" class="form-control" id="passwordInput" placeholder="******" />
-                        <button class="btn btn-outline-secondary px-3" type="button" id="btnTogglePassword" title="Mostrar/Ocultar contraseña">
+                        <input asp-for="Contrasena" type="password" class="form-control" id="passwordInput"
+                               placeholder="******" />
+                        <button class="btn btn-outline-secondary px-3" type="button" id="btnTogglePassword"
+                                title="Mostrar/Ocultar contraseña">
                             <i class="bi bi-eye" id="eyeIcon"></i>
                         </button>
+
                     </div>
                     <span asp-validation-for="Contrasena" class="text-danger"></span>
-                </div>
+                    <div class="mt-2 small" id="passwordChecklist">
+                        <div id="req-mayus" class="text-muted"><i class="bi bi-circle me-1"></i>Al menos una mayúscula
+                        </div>
+                        <div id="req-minus" class="text-muted"><i class="bi bi-circle me-1"></i>Al menos una minúscula
+                        </div>
+                        <div id="req-longitud" class="text-muted"><i class="bi bi-circle me-1"></i>Más de 8 caracteres
+                        </div>
+                        <div id="req-especial" class="text-muted"><i class="bi bi-circle me-1"></i>Al menos un carácter
+                            especial</div>
+                        </div>
+                    </div>
 
-                <div class="mb-3">
-                    <label asp-for="Rol" class="form-label fw-semibold"></label>
-                    <select asp-for="Rol" class="form-select">
-                        <option value="">Seleccione un rol...</option>
-                        <option value="Administrador">Administrador</option>
-                        <option value="Vendedor">Vendedor</option>
-                    </select>
-                    <span asp-validation-for="Rol" class="text-danger"></span>
-                </div>
+                    <div class="mb-3">
+                        <label asp-for="Rol" class="form-label fw-semibold"></label>
+                        <select asp-for="Rol" class="form-select">
+                            <option value="">Seleccione un rol...</option>
+                            <option value="Administrador">Administrador</option>
+                            <option value="Vendedor">Vendedor</option>
+                        </select>
+                        <span asp-validation-for="Rol" class="text-danger"></span>
+                    </div>
 
-                <div class="d-flex justify-content-between mt-4">
-                    <a asp-action="Index" class="btn btn-secondary">
-                        <i class="bi bi-arrow-left me-1"></i> Volver
-                    </a>
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-check-lg me-1"></i> Guardar Usuario
-                    </button>
-                </div>
-            </form>
+                    <div class="d-flex justify-content-between mt-4">
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Volver
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-lg me-1"></i> Guardar Usuario
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
-@section Scripts {
+ @section Scripts {
     <script>
         document.getElementById('btnTogglePassword').addEventListener('click', function () {
             const passwordInput = document.getElementById('passwordInput');
             const eyeIcon = document.getElementById('eyeIcon');
-            
+
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 eyeIcon.classList.remove('bi-eye');
@@ -71,6 +84,92 @@
                 passwordInput.type = 'password';
                 eyeIcon.classList.remove('bi-eye-slash');
                 eyeIcon.classList.add('bi-eye');
+            }
+        });
+
+        function marcarValido(input) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+        }
+        function marcarInvalido(input) {
+            input.classList.remove('is-valid');
+            input.classList.add('is-invalid');
+        }
+
+        const inputNombre = document.getElementById('Nombre');
+
+        inputNombre.addEventListener('input', function () {
+            const posicionCursor = inputNombre.selectionStart;
+            inputNombre.value = inputNombre.value.toUpperCase();
+            inputNombre.setSelectionRange(posicionCursor, posicionCursor);
+            validarNombre();
+        });
+
+        function validarNombre() {
+            const valor = inputNombre.value.trim();
+            const valido = valor.length >= 5;
+            valido ? marcarValido(inputNombre) : marcarInvalido(inputNombre);
+            return valido;
+        }
+
+        const inputEmail = document.getElementById('Email');
+        inputEmail.addEventListener('input', validarEmail);
+
+        function validarEmail() {
+            const valido = inputEmail.value.includes('@@');
+            valido ? marcarValido(inputEmail) : marcarInvalido(inputEmail);
+            return valido;
+        }
+
+        const inputPassword = document.getElementById('passwordInput');
+
+        function actualizarRequisito(id, cumplido) {
+            const el = document.getElementById(id);
+            const icono = el.querySelector('i');
+            el.classList.toggle('text-success', cumplido);
+            el.classList.toggle('text-muted', !cumplido);
+            icono.classList.toggle('bi-check-circle-fill', cumplido);
+            icono.classList.toggle('bi-circle', !cumplido);
+        }
+
+        inputPassword.addEventListener('input', validarPassword);
+
+        function validarPassword() {
+            const valor = inputPassword.value;
+            const cumple = {
+                mayus: /[A-Z]/.test(valor),
+                minus: /[a-z]/.test(valor),
+                longitud: valor.length > 8,
+                especial: /[^A-Za-z0-9]/.test(valor)
+            };
+
+            actualizarRequisito('req-mayus', cumple.mayus);
+            actualizarRequisito('req-minus', cumple.minus);
+            actualizarRequisito('req-longitud', cumple.longitud);
+            actualizarRequisito('req-especial', cumple.especial);
+
+            const todoCumplido = Object.values(cumple).every(Boolean);
+            todoCumplido ? marcarValido(inputPassword) : marcarInvalido(inputPassword);
+            return todoCumplido;
+        }
+
+        const selectRol = document.getElementById('Rol');
+        selectRol.addEventListener('change', validarRol);
+
+        function validarRol() {
+            const valido = selectRol.value.trim().length > 0;
+            valido ? marcarValido(selectRol) : marcarInvalido(selectRol);
+            return valido;
+        }
+
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const nombreOk = validarNombre();
+            const emailOk = validarEmail();
+            const passwordOk = validarPassword();
+            const rolOk = validarRol();
+
+            if (!nombreOk || !emailOk || !passwordOk || !rolOk) {
+                e.preventDefault();
             }
         });
     </script>
